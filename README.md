@@ -1,4 +1,4 @@
-# Echo meal check-in prototype (AT-01, build B1, web v1)
+# Echo meal check-in prototype (AT-01, build B1, web v2)
 
 A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of use case **UC01: Support Cleber through a planned meal**. It is a static site (HTML, CSS and plain JavaScript): no build step, no server of its own.
 
@@ -11,7 +11,7 @@ A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of 
 | Host briefing | – | Objective, scenario, both personas, the action sequence and what is walked. Hosts read it aloud. |
 | **Path A: Cleber** (Echo in the kitchen) | 2, 4, 5, 7 | Three reminders; choices *go to the kitchen*, *say "not now"*, *do nothing*; one postponement restarts the sequence, a second does not; eating confirmed by "I'm done" or by Echo noticing; Echo stops and rests. |
 | **Path B: Sarah** (phone view) | 6, 7 | Unresolved-meal alert (refusal, non-response or uncertain), *Call Cleber* / *I'll visit*, repeat after no response, Gilbert notified, "resolved" update. |
-| Walkthrough form | all | The four questions (a to d) with Yes/No and a justification, success and failure stories, suggestions. |
+| Walkthrough form | all | The four questions (a to d): one tap each, and a short reason box that opens after the tap. Success and failure stories and suggestions are optional. Nothing blocks the evaluator. The host chooses on the briefing page whether questions are answered **after each step** (the method as written in EM-04 and ER-01, the default) or **all together at the end** (a review screen with one section per step walked). |
 | CL3 follow-up | – | The three open questions for UC01-F2-CL3 after the walkthrough. |
 | Notes export | – | Printable page (save as PDF) and a `.json` download, including Sarah's notes when a phone was connected. |
 
@@ -25,14 +25,19 @@ Without a second evaluator, ignore the QR code. Sarah's view also works **alone*
 
 How it connects: GitHub Pages has no backend, so the two devices pair with WebRTC through [PeerJS](https://peerjs.com). The free public PeerJS broker is only used to introduce the two devices; the messages go device to device. Only simulated state and the evaluators' notes are sent, and no personal data. Two tabs in the same browser also sync with no internet at all. If the broker is unreachable, the page says so and Cleber's path still works.
 
+## Echo's look and voice
+
+- **Look:** the robot from the team's interim presentation (`img/echo.png`, cut out of the title slide). The picture cannot turn its head, so attention is shown softly: the chest lights and a halo brighten, then Echo leans about 2.5° and floats by a few pixels. "Light only" in the settings removes all movement, and the operating system's *reduce motion* setting does the same by default. Echo's lines appear in a speech bubble styled like the one on the slide.
+- **Voice:** pre-rendered audio files (`audio/<lang>/<key>.mp3`), the same on every device, in a slow, lowered, calm neural voice (Microsoft *Ava* for English, *Amala* for German, *Francisca* for Portuguese), played at one fixed level on every reminder. If a file cannot be played, the browser's own voice is used as a fallback. Alternatives to listen to are in `tools/voice-samples/`.
+- **Changing the voice or the wording:** edit the text in `js/i18n.js` or the voice in `tools/make_audio.py`, then run `python3 -m pip install edge-tts && python3 tools/make_audio.py`. To use ElevenLabs (or anyone's recording) instead, just replace the mp3 files with the same names. The audio is a recording of the text at the time, so regenerate after any wording change.
+
 ## Settings (⚙ on every screen)
 
-Language (English, Deutsch, Português; for Echo's lines, Sarah's messages and the controls; the walkthrough form stays English), text size, high contrast, night mode, Echo movement (gentle lean + light, or light only), speak aloud, captions. Settings are per device. "Reduce motion" in the operating system defaults Echo to light only.
-
-Echo's design avoids an uncanny look: no pupils, mouth or beak, no blinking or eye tracking, soft amber LEDs, and only a very slow, small lean before it speaks. The voice level is fixed on every reminder and shown as unchanged.
+Language (English, Deutsch, Português; for Echo's lines, Sarah's messages and the controls; the walkthrough form stays English), text size, high contrast, night mode, Echo movement (gentle lean + light, or light only), speak aloud, captions. Settings are per device.
 
 ## Things to check before the session
 
+- **The robot is not the owl of RP-01.** RP-01 and AT-01 describe Echo as an owl-like tabletop robot with an orientable head and a soft head turn before speech. This prototype uses the slide's astronaut-style robot and cannot turn its head. If the team keeps this look, RP-01's embodiment text should change.
 - **Wording is placeholder.** Echo's lines 1 and 2 follow DS-01; line 3, the replies to "not now", Sarah's alert text and the "resolved" text are my wording, informed by IDP-01. Replace them in `js/i18n.js` if the team specifies others. The German and Portuguese texts need a native check.
 - **Night mode is beyond AT-01.** AT-01 lists time-of-day adaptations (RP-01) as out of scope. Night mode here only changes the look (dark theme, dim room and LEDs) and is off by default. Do not present it as a verified behaviour.
 - **Gilbert** is included (UC01 step 6) although AT-01's scope does not name him.
@@ -59,5 +64,6 @@ Opening `index.html` directly also works for Cleber's path, but the QR link only
 ## Files
 
 - `index.html`, `css/style.css`
-- `js/i18n.js` texts and translations · `js/settings.js` · `js/scene.js` kitchen and Echo · `js/sync.js` pairing · `js/walkthrough.js` form and export · `js/cleber.js` · `js/sarah.js` · `js/app.js` routing
+- `js/i18n.js` texts and translations · `js/settings.js` · `js/scene.js` kitchen, Echo and audio playback · `js/sync.js` pairing · `js/walkthrough.js` form and export · `js/cleber.js` · `js/sarah.js` · `js/app.js` routing
+- `img/` the robot picture · `audio/` Echo's voice lines · `tools/` voice generation script and voice samples
 - `vendor/` PeerJS 1.5.4 (MIT) and qrcode-generator 1.4.4 (MIT), copied in so the page needs no CDN

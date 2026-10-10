@@ -10,16 +10,16 @@
     return {
       code: code || EP.sync.newCode(), screen: 'brief', n: 1, postponed: 0, last: 'none', clock: 12 * 60 + 30,
       times: [], pending: null, say: null, escalated: false, outcome: null, alertAt: null, resolvedAt: null,
-      sarahPhase: 'none', notes: {}, followup: {}, skip: {}, sarahNotes: {}, sarahEvents: [], plate: 'cold'
+      sarahPhase: 'none', notes: {}, followup: {}, visited: [], mode: 'step', sarahNotes: {}, sarahEvents: [], plate: 'cold'
     };
   }
   function save() { EP.store.set(KEY, ST); }
-  function cardId() { return ST.screen === 'closure' || ST.screen === 'after' ? 'CLOSE' : 'R' + ST.n + (ST.postponed > 0 ? 'b' : ''); }
+  function cardId() { return ST.screen === 'closure' || ST.screen === 'after' ? 'CLOSE' : (ST.card || 'R1'); }
 
   /* ---------- session / sync ---------- */
   function snapshot() {
     return {
-      type: 'state', ts: Date.now(), code: ST.code, phase: ST.sarahPhase, outcome: ST.outcome,
+      type: 'state', ts: Date.now(), code: ST.code, mode: ST.mode, phase: ST.sarahPhase, outcome: ST.outcome,
       times: ST.times.map(EP.fmtTime), postponed: ST.postponed > 0, mealTime: '12:30',
       alertAt: ST.alertAt != null ? EP.fmtTime(ST.alertAt) : null,
       resolvedAt: ST.resolvedAt != null ? EP.fmtTime(ST.resolvedAt) : null
@@ -107,7 +107,10 @@
       '<li class="on"><b>Step 6</b> (Sarah’s path). If still unconfirmed, Echo tells Sarah what kind of outcome it was.</li>' +
       '<li class="on"><b>Step 7.</b> Echo stops and rests; if Cleber eats after Sarah calls, Sarah gets a “resolved” update.</li>' +
       '<li class="off">Plate-away log and visit summary <em>(steps 8–9, not walked)</em></li></ol></section>' +
-      '<section class="card"><h2>For the evaluator</h2><p>At each step, answer the four questions from your persona’s point of view and <b>justify each answer</b>. Then choose what your persona would do. Note success stories, failure stories and design suggestions. At the end, hand your notes to the hosts. Echo’s words are placeholder wording.</p></section>' +
+      '<section class="card"><h2>For the evaluator</h2><p>Step through the sequence as your persona. For each step, answer the four questions (one tap each, plus a short reason). Add success stories, failure stories and design suggestions if you have them. At the end, hand your notes to the hosts. Echo’s words are placeholder wording.</p>' +
+      '<p><b>When to answer the questions?</b></p><div class="seg wide" role="radiogroup">' +
+      '<button type="button" role="radio" aria-checked="' + (ST.mode === 'step') + '" class="' + (ST.mode === 'step' ? 'on' : '') + '" data-action="mode-step">After each step (as in the method)</button>' +
+      '<button type="button" role="radio" aria-checked="' + (ST.mode === 'end') + '" class="' + (ST.mode === 'end' ? 'on' : '') + '" data-action="mode-end">All together at the end</button></div></section>' +
       sessionCard() +
       simNotice() +
       '<div class="center"><button class="btn primary big" data-action="start">Start walkthrough as Cleber</button></div></main>';
@@ -133,40 +136,47 @@
 
   function view() {
     if (ST.screen === 'brief') { el.innerHTML = header() + briefing(); return; }
-    var s = ST, id = cardId(), gated = false, body = '';
-    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save, onChange: refreshGate };
+    var s = ST, id = cardId(), body = '';
+    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save };
 
+    var step = s.mode === 'step';
+    function P(html) { return step ? panel(html) : ''; }
+    var qNote = 'After Cleber’s action: what did Echo do, and was it clear what was happening?';
     if (s.screen === 'reminder') {
-      var locked = !EP.wt.answered(s.notes[id]) && !s.skip[id];
-      gated = locked;
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }),
-        choices: btn('kitchen', EP.t('a_kitchen'), locked ? ' disabled' : '') + btn('notnow', EP.t('a_notnow'), locked ? ' disabled' : '') + btn('nothing', EP.t('a_nothing'), locked ? ' disabled' : '') +
-          '<p class="gate-hint" id="gate-hint"' + (locked ? '' : ' hidden') + '>Answer the four questions on the right, then choose what Cleber would do. <button class="linkbtn" data-action="skip-gate">Skip the questions</button></p>'
-      }) + panel(EP.wt.formHtml(s.notes, id, {}));
+        choices: btn('kitchen', EP.t('a_kitchen')) + btn('notnow', EP.t('a_notnow')) + btn('nothing', EP.t('a_nothing')) +
+          (step ? '<p class="gate-hint">Answer the questions on the right for this step, then choose what Cleber would do.</p>' : '<p class="gate-hint">Choose what Cleber would do. You will answer the questions at the end.</p>')
+      }) + P(EP.wt.formHtml(s.notes, id, {}));
     } else if (s.screen === 'kitchen') {
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }), status: EP.t('kitchen_quiet'),
         choices: btn('eat_done', EP.t('a_eat_done')) + btn('eat_silent', EP.t('a_eat_silent')) + btn('leave', EP.t('a_leave'))
-      }) + panel(EP.wt.formHtml(s.notes, id, { after: 'After Cleber’s action: what did Echo do, and was it clear what was happening?' }));
+      }) + P(EP.wt.formHtml(s.notes, id, { after: qNote }));
     } else if (s.screen === 'result') {
       var p = s.pending || {}, status = '';
       if (p.type === 'advance') status = EP.t('wait_n', { n: p.wait });
       else if (p.type === 'restart') status = EP.t('wait_restart', { n: p.wait });
       else if (p.type === 'close' && !s.say) status = EP.t('meal_finished');
       body = stage({ pill: EP.t('reminder_of', { n: s.n }), status: status, choices: btn('next', EP.t('next'), ' data-primary="1"') }) +
-        panel(EP.wt.formHtml(s.notes, id, { after: 'After Cleber’s action: what did Echo do, and was it clear what was happening?' }));
+        P(EP.wt.formHtml(s.notes, id, { after: qNote }));
     } else if (s.screen === 'closure') {
       var behind = s.escalated
         ? '<p class="behind"><b>Behind the scenes (not seen by Cleber):</b> Echo has told Sarah that lunch is unresolved (' + EP.esc(outcomeName(s.outcome)) + '). Sarah’s phone shows the alert now.</p>'
         : '<p class="behind"><b>Behind the scenes:</b> eating is confirmed, so Echo stops prompting for this meal.</p>';
-      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1"') + behind }) + panel(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1"') + behind }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
     } else if (s.screen === 'after') {
       body = stage({
         status: EP.t('echo_rests'),
         choices: '<p class="choice-title">Scenario: what happens next? (Sarah’s phone shows the “resolved” update only if Cleber eats)</p>' +
           btn('later_eats', EP.t('a_later_eats')) + btn('later_no', EP.t('a_later_no'))
-      }) + panel(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+      }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+    } else if (s.screen === 'review') {
+      body = '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">Open each step you walked and answer the four questions as Cleber. Sarah’s evaluator answers on their own phone.</p><div class="review">' +
+        s.visited.map(function (vid, i) {
+          var m = EP.wt.meta(vid);
+          return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' + EP.wt.formHtml(s.notes, vid, { after: qNote }) + '</details>';
+        }).join('') + '</div><div class="choices"><button class="btn primary big" data-action="to-followup">Continue</button></div></div>';
     } else if (s.screen === 'followup') {
       body = '<div class="stage-wrap solo"><h1>Thank you</h1><p class="lead">You have finished stepping through Cleber’s path. Please answer these open questions, then hand your notes to the hosts.</p>' +
         '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button></div></div>' + panel(EP.wt.followupHtml(s.followup));
@@ -174,8 +184,9 @@
       body = '<div class="stage-wrap solo"><h1>Walkthrough complete</h1><p class="lead">Hand your notes to the hosts: print them, or download the file.</p>' +
         summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="restart">Start over</button></div></div>';
     }
-    el.innerHTML = header() + '<div class="layout' + (s.screen === 'done' ? ' single' : '') + '">' + body + '</div>' + simNotice();
-    afterRender(gated);
+    var single = s.screen === 'done' || s.screen === 'review' || (!step && ['reminder', 'kitchen', 'result', 'closure', 'after'].indexOf(s.screen) >= 0);
+    el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + '">' + body + '</div>' + simNotice();
+    afterRender(false);
   }
 
   function outcomeName(o) { return o === 'notnow' ? 'refusal' : (o === 'kitchen' ? 'uncertain' : 'non-response'); }
@@ -189,15 +200,6 @@
     }).join('') + '</ul>';
   }
 
-  function refreshGate() {
-    var id = cardId();
-    if (ST.screen !== 'reminder') return;
-    var open = EP.wt.answered(ST.notes[id]) || ST.skip[id];
-    el.querySelectorAll('.choices .choice').forEach(function (b) { b.disabled = !open; });
-    var h = document.getElementById('gate-hint');
-    if (h) h.hidden = !!open;
-  }
-
   /* What Echo does on each screen (light, lean, speech). */
   function afterRender(gated, speak) {
     EP.scene.mount();
@@ -206,13 +208,13 @@
     if (s.screen === 'reminder') {
       EP.scene.set({ mode: 'awake', lean: true });
       if (speak) EP.scene.say('r' + s.n);
-      else { var c = document.getElementById('caption'); if (c && EP.settings.captions) { c.textContent = '“' + EP.t('r' + s.n) + '”'; c.classList.add('show'); } }
+      else { var c = document.getElementById('caption'); if (c && EP.settings.captions) { c.textContent = EP.t('r' + s.n); c.classList.add('show'); } }
     } else if (s.screen === 'kitchen') {
       EP.scene.set({ mode: 'quiet' });
     } else if (s.screen === 'result') {
       EP.scene.set({ mode: s.say ? 'awake' : 'rest' });
       if (s.say && speak) EP.scene.say(s.say, { instant: true, lean: false, rest: true });
-      else if (s.say) { var c2 = document.getElementById('caption'); if (c2 && EP.settings.captions) { c2.textContent = '“' + EP.t(s.say) + '”'; c2.classList.add('show'); } }
+      else if (s.say) { var c2 = document.getElementById('caption'); if (c2 && EP.settings.captions) { c2.textContent = EP.t(s.say); c2.classList.add('show'); } }
     } else {
       EP.scene.set({ mode: 'rest' });
     }
@@ -221,7 +223,8 @@
   /* ---------- transitions ---------- */
   function go(screen, speak) { ST.screen = screen; save(); view(); if (speak) afterRender(false, true); }
 
-  function giveReminder(speak) { ST.times.push(ST.clock); ST.screen = 'reminder'; save(); view(); if (speak) afterRender(false, true); pushState(); }
+  function visit(id) { EP.wt.ensure(ST.notes, id); if (ST.visited.indexOf(id) < 0) ST.visited.push(id); }
+  function giveReminder(speak) { ST.times.push(ST.clock); ST.screen = 'reminder'; ST.card = 'R' + ST.n + (ST.postponed > 0 ? 'b' : ''); visit(ST.card); save(); view(); if (speak) afterRender(false, true); pushState(); }
 
   var actions = {
     start: function () { ST.plate = 'cold'; ST.clock = 12 * 60 + 30; ST.times = []; giveReminder(true); },
@@ -248,15 +251,18 @@
           pushState(); go('closure');
         }
       } else { ST.escalated = false; go('closure'); }
+      if (ST.screen === 'closure') { visit('CLOSE'); save(); }
     },
-    'skip-gate': function () { ST.skip[cardId()] = true; save(); refreshGate(); },
+    'mode-step': function () { ST.mode = 'step'; save(); pushState(); view(); },
+    'mode-end': function () { ST.mode = 'end'; save(); pushState(); view(); },
+    'to-followup': function () { go('followup'); },
     replay: function () {
       var s = ST;
       if (s.screen === 'reminder') EP.scene.say('r' + s.n);
       else if (s.screen === 'result' && s.say) EP.scene.say(s.say, { instant: true, lean: false, rest: true });
     },
-    later_eats: function () { ST.clock += 25; ST.resolvedAt = ST.clock; ST.sarahPhase = 'resolved'; pushState(); go('followup'); },
-    later_no: function () { go('followup'); },
+    later_eats: function () { ST.clock += 25; ST.resolvedAt = ST.clock; ST.sarahPhase = 'resolved'; pushState(); go(afterWalk()); },
+    later_no: function () { go(afterWalk()); },
     finish: function () { go('done'); },
     print: function () { EP.router.go('#/notes'); },
     download: function () { EP.wt.download(exportAll(), 'echo-walkthrough-' + ST.code + '.json'); },
@@ -269,9 +275,11 @@
   // the closure screen's "Continue" differs from the result screen's
   var resultNext = actions.next;
   actions.next = function () {
-    if (ST.screen === 'closure') { go(ST.escalated ? 'after' : 'followup'); return; }
+    if (ST.screen === 'closure') { go(ST.escalated ? 'after' : afterWalk()); return; }
     resultNext();
   };
+
+  function afterWalk() { return ST.mode === 'end' ? 'review' : 'followup'; }
 
   function restart() {
     EP.scene.clear();
@@ -316,6 +324,7 @@
     mount: function (container) {
       el = container;
       ST = EP.store.get(KEY, null) || fresh();
+      ST.mode = ST.mode || 'step'; ST.visited = ST.visited || [];
       save();
       openSync();
       view();

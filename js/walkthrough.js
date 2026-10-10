@@ -70,14 +70,14 @@
         '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
-        '<p class="hint">Answer from ' + esc(m.persona) + '’s point of view and justify each answer.</p><ol class="qs">';
+        '<p class="hint">Answer as ' + esc(m.persona) + '. One tap each; add a short reason.</p><ol class="qs">';
       Q.forEach(function (q) {
         var k = q[0], a = e.q[k] || {};
-        h += '<li><p class="q"><b>' + k + '.</b> ' + esc(q[1]) + '</p>' +
+        h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q"><b>' + k + '.</b> ' + esc(q[1]) + '</p>' +
           '<div class="yn" role="radiogroup" aria-label="Question ' + k + '">' +
           '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans"' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
-          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans"' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div>' +
-          '<textarea rows="2" placeholder="Why? Justify your answer." aria-label="Justification for question ' + k + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
+          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans"' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
+          '<textarea rows="2" placeholder="' + (a.ans === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.') + '" aria-label="Justification for question ' + k + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
       });
       h += '</ol>';
       if (options.after) {
@@ -126,7 +126,17 @@
         return true;
       }
       document.addEventListener('input', function (ev) { if (ev.target.matches('textarea[data-path]')) handle(ev.target); });
-      document.addEventListener('change', function (ev) { if (ev.target.matches('input[type=radio][data-path]')) handle(ev.target); });
+      document.addEventListener('change', function (ev) {
+        var t = ev.target;
+        if (!t.matches('input[type=radio][data-path]')) return;
+        handle(t);
+        var li = t.closest('li');
+        if (li) {
+          li.classList.add('answered');
+          var ta = li.querySelector('textarea');
+          if (ta && !ta.value) ta.placeholder = t.value === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.';
+        }
+      });
     },
 
     /* Plain data for download / printing. */

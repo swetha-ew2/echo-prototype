@@ -7,7 +7,7 @@
   var snap = { phase: 'none' };
   var standalone = false;
 
-  function fresh() { return { code: null, card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
+  function fresh() { return { code: null, localMode: 'step', review: false, card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
   function save() { EP.store.set(KEY, SS); }
 
   function sendEvent(kind) {
@@ -49,6 +49,7 @@
   }
 
   function t(k, v) { return EP.t(k, v); }
+  function endMode() { return (standalone ? SS.localMode : snap.mode) === 'end'; }
 
   function alertCard(repeat) {
     var out = snap.outcome === 'notnow' ? 's_out_notnow' : (snap.outcome === 'kitchen' ? 's_out_kitchen' : 's_out_none');
@@ -98,7 +99,8 @@
       h += '<p class="hint">Sarah has responded.</p>';
     }
     if (standalone) {
-      h += '<hr><label class="field"><span>Scenario outcome</span><select id="s-outcome"><option value="none">Cleber did not respond (non-response)</option><option value="notnow">Cleber said “not now” (refusal)</option><option value="kitchen">Went to the kitchen, eating not confirmed (uncertain)</option></select></label>' +
+      h += '<hr><div class="seg" role="radiogroup"><button type="button" class="' + (SS.localMode !== 'end' ? 'on' : '') + '" data-action="s-mode" data-val="step">Questions after each step</button><button type="button" class="' + (SS.localMode === 'end' ? 'on' : '') + '" data-action="s-mode" data-val="end">Questions at the end</button></div>' +
+        '<label class="field"><span>Scenario outcome</span><select id="s-outcome"><option value="none">Cleber did not respond (non-response)</option><option value="notnow">Cleber said “not now” (refusal)</option><option value="kitchen">Went to the kitchen, eating not confirmed (uncertain)</option></select></label>' +
         '<div class="row"><button class="btn primary" data-action="s-send">Send unresolved-meal alert</button>' +
         '<button class="btn" data-action="s-resolve"' + (snap.phase === 'alert' ? '' : ' disabled') + '>Cleber eats later → “resolved”</button>' +
         '<button class="btn ghost" data-action="s-reset">Reset</button></div>';
@@ -107,11 +109,11 @@
   }
 
   function panel() {
-    var id = snap.phase === 'resolved' ? 'S7' : 'S6';
     var showAlert = snap.phase === 'alert' || snap.phase === 'resolved';
+    if (endMode()) return '';
     if (!showAlert) return '<aside class="panel"><section class="wt"><h2>Walkthrough questions</h2><p class="hint">They appear when Sarah’s phone receives something. ' +
-      (standalone ? 'Choose a scenario below the phone to send the first alert.' : 'Wait for Cleber’s evaluator to reach the end of the reminders.') + '</p></section></aside>';
-    var h = '<aside class="panel">';
+      (standalone ? 'Open the simulation controls below the phone to send the first alert.' : 'Wait for Cleber’s evaluator to reach the end of the reminders.') + '</p></section></aside>';
+    var id = snap.phase === 'resolved' ? 'S7' : 'S6', h = '<aside class="panel">';
     if (snap.phase === 'resolved') {
       h += '<div class="tabs2"><button class="' + (SS.card !== 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S7">Step 7: resolved</button><button class="' + (SS.card === 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S6">Step 6: alert</button></div>';
       id = SS.card === 'S6' ? 'S6' : 'S7';
@@ -120,12 +122,28 @@
     return h + '</aside>';
   }
 
+  function reviewHtml() {
+    var ids = ['S6'].concat(snap.phase === 'resolved' ? ['S7'] : []);
+    return '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">Answer the four questions as Sarah for each step you saw.</p><div class="review">' +
+      ids.map(function (id, i) {
+        var m = EP.wt.meta(id);
+        return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' +
+          EP.wt.formHtml(SS.notes, id, id === 'S6' ? { after: 'After Sarah’s action (or after the repeat): was it clear what happens next?' } : {}) + '</details>';
+      }).join('') + '</div><div class="choices row"><button class="btn" data-action="s-back">Back to the phone</button></div></div>';
+  }
+
   function view() {
     EP.wt.ctx = { notes: SS.notes, followup: {}, save: function () { save(); sendNotes(); } };
     var hasForm = snap.phase === 'alert' || snap.phase === 'resolved';
+    var end = endMode();
+    if (end && SS.review) {
+      el.innerHTML = header() + '<div class="layout single">' + reviewHtml() + '</div>';
+      return;
+    }
     el.innerHTML = header() +
-      '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>' +
-      '<div class="layout sarah tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() + '</div>' + panel() + '</div>' +
+      (end ? '' : '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
+      '<div class="layout sarah' + (end ? ' single' : '') + ' tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
+      (end && hasForm ? '<button class="btn primary" data-action="s-review">I have seen enough: answer the questions</button>' : '') + '</div>' + panel() + '</div>' +
       '<p class="sim-note">Simulation: this phone is played by the prototype. Nothing is sent to a real phone.</p>';
   }
 
@@ -143,13 +161,16 @@
     's-card': function (t) { SS.card = t.getAttribute('data-card'); view(); },
     's-send': function () {
       var sel = document.getElementById('s-outcome');
-      SS = Object.assign(fresh(), { notes: SS.notes, seenAlert: true });
+      SS = Object.assign(fresh(), { notes: SS.notes, seenAlert: true, localMode: SS.localMode, code: code });
       sendLocalSnapshot(sel ? sel.value : 'none'); save(); view();
     },
     's-resolve': function () {
       snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; save(); view();
     },
-    's-reset': function () { SS = fresh(); snap = { phase: 'none' }; save(); view(); }
+    's-reset': function () { var m = SS.localMode; SS = fresh(); SS.localMode = m; SS.code = code; snap = { phase: 'none' }; save(); view(); },
+    's-review': function () { SS.review = true; save(); view(); },
+    's-back': function () { SS.review = false; save(); view(); },
+    's-mode': function (t) { SS.localMode = t.getAttribute('data-val'); save(); view(); }
   };
 
   EP.sarah = {
