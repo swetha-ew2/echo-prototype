@@ -1,0 +1,338 @@
+/* Cleber's evaluator screen (Path A) and the session host.
+   Walks UC01 steps 2, 4, 5 and 7 and drives what Sarah's phone shows (steps 6 and 7). */
+(function () {
+  var KEY = 'echo.cleber';
+  var ST = null;          // persisted walkthrough state
+  var syncStatus = 'init';
+  var el = null;          // container
+
+  function fresh(code) {
+    return {
+      code: code || EP.sync.newCode(), screen: 'brief', n: 1, postponed: 0, last: 'none', clock: 12 * 60 + 30,
+      times: [], pending: null, say: null, escalated: false, outcome: null, alertAt: null, resolvedAt: null,
+      sarahPhase: 'none', notes: {}, followup: {}, skip: {}, sarahNotes: {}, sarahEvents: [], plate: 'cold'
+    };
+  }
+  function save() { EP.store.set(KEY, ST); }
+  function cardId() { return ST.screen === 'closure' || ST.screen === 'after' ? 'CLOSE' : 'R' + ST.n + (ST.postponed > 0 ? 'b' : ''); }
+
+  /* ---------- session / sync ---------- */
+  function snapshot() {
+    return {
+      type: 'state', ts: Date.now(), code: ST.code, phase: ST.sarahPhase, outcome: ST.outcome,
+      times: ST.times.map(EP.fmtTime), postponed: ST.postponed > 0, mealTime: '12:30',
+      alertAt: ST.alertAt != null ? EP.fmtTime(ST.alertAt) : null,
+      resolvedAt: ST.resolvedAt != null ? EP.fmtTime(ST.resolvedAt) : null
+    };
+  }
+  function pushState() { EP.sync.send(snapshot()); }
+
+  function onMsg(msg) {
+    if (msg.type === 'hello') pushState();
+    else if (msg.type === 'sarahEvent') {
+      if (!ST.sarahEvents.some(function (e) { return e.id === msg.id; })) { ST.sarahEvents.push({ id: msg.id, kind: msg.kind, at: msg.at }); save(); }
+    } else if (msg.type === 'sarahNotes') { ST.sarahNotes = msg.notes || {}; save(); }
+  }
+  function onStatus(st) {
+    if (st === 'idtaken') { ST.code = EP.sync.newCode(); save(); openSync(); return; }
+    syncStatus = st;
+    var chip = document.getElementById('sync-chip');
+    if (chip) chip.outerHTML = syncChip();
+    var host = document.getElementById('host-sync');
+    if (host) host.innerHTML = syncText();
+    if (st === 'connected') pushState();
+  }
+  function openSync() { EP.sync.open('host', ST.code, onMsg, onStatus); }
+
+  function link() { return location.href.split('#')[0] + '#/sarah?s=' + ST.code; }
+  function syncText() {
+    var m = {
+      init: 'Starting…', ready: 'Waiting for Sarah’s phone to join.', connected: 'Sarah’s phone is connected.',
+      offline: 'No connection to the pairing service. Phone link unavailable; Cleber’s path still works.',
+      nopeer: 'Pairing library not loaded. Phone link unavailable; Cleber’s path still works.'
+    };
+    return EP.esc(m[syncStatus] || m.init);
+  }
+  function syncChip() {
+    var cls = syncStatus === 'connected' ? 'ok' : (syncStatus === 'offline' || syncStatus === 'nopeer' ? 'bad' : 'wait');
+    var txt = syncStatus === 'connected' ? 'Sarah’s phone connected' : (cls === 'bad' ? 'Phone link offline' : 'Session ' + ST.code);
+    return '<button id="sync-chip" class="chip-btn ' + cls + '" data-action="open-session"><i></i>' + EP.esc(txt) + '</button>';
+  }
+
+  function sessionCard() {
+    var local = location.protocol === 'file:';
+    var qrHtml = '';
+    try {
+      var qr = qrcode(0, 'M'); qr.addData(link()); qr.make();
+      qrHtml = qr.createImgTag(6, 8, 'QR code that opens Sarah’s phone view');
+    } catch (e) { qrHtml = '<p class="hint">QR code could not be generated.</p>'; }
+    return '<div class="session-card"><div class="qr">' + qrHtml + '</div><div>' +
+      '<h3>Sarah’s phone (optional second evaluator)</h3>' +
+      '<p>Scan the code or open this link on another device. Session code: <b class="code">' + EP.esc(ST.code) + '</b></p>' +
+      '<p class="linkline"><input readonly value="' + EP.esc(link()) + '" aria-label="Link to Sarah’s view" onclick="this.select()"> ' +
+      '<button class="btn ghost" data-action="copy-link">Copy</button></p>' +
+      '<p id="host-sync" class="status-line">' + syncText() + '</p>' +
+      (local ? '<p class="warn">This copy is opened from a file, so the link will not work on another device. Use the hosted (GitHub Pages) address.</p>' : '') +
+      '<p class="hint">Without a second evaluator, ignore this: the Cleber path works on its own.</p></div></div>';
+  }
+
+  /* ---------- rendering ---------- */
+  function header() {
+    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype · AT-01 · B1</small></div></div>' +
+      '<div class="top-actions">' + syncChip() +
+      '<button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button>' +
+      '<button class="icon-btn" data-action="open-menu" aria-label="' + EP.esc(EP.t('ui_menu')) + '">☰</button></div></header>';
+  }
+
+  function simNotice() {
+    return '<p class="sim-note">Simulation: nothing here senses, decides or logs anything. The prototype plays Echo and Sarah’s phone; the evaluator imagines the persona.</p>';
+  }
+
+  function briefing() {
+    return '<main class="brief">' +
+      '<h1>Cognitive walkthrough: UC01</h1>' +
+      '<p class="lead">Support Cleber through a planned meal. <b>Hosts:</b> read this page aloud to the evaluators, then start. Do not intervene while they work; take notes and do not explain problems away.</p>' +
+      '<div class="brief-grid">' +
+      '<section class="card"><h2>Objective</h2><p>Cleber (the evaluator’s persona) wants to <b>decide for himself how to respond</b> to Echo’s meal reminders. Echo’s purpose is that he starts and completes his planned meals more consistently (OBJ-01) while keeping control (OBJ-02).</p></section>' +
+      '<section class="card"><h2>Scenario</h2><p>It is 12:30, Cleber’s planned lunchtime. Sarah left a prepared meal for him earlier. He has not been near the kitchen. Echo, a small tabletop robot in the kitchen, begins its check-in.</p></section>' +
+      '<section class="card"><h2>Persona A: Cleber</h2><p>Lives alone in an apartment and eats three planned meals a day. Some days he is in another room or asleep and misses his alarm or notes, two or three times a week. He values independence and security. <i>Evidence is provisional (from his grandson Gilbert).</i></p></section>' +
+      '<section class="card"><h2>Persona B: Sarah</h2><p>Cleber’s caregiver. She visits every two to three days, prepares meals, and also supports other clients, so she cannot always respond at once. She wants alerts only for genuinely concerning situations, and does not want Cleber to feel watched.</p></section>' +
+      '</div>' +
+      '<section class="card"><h2>Action Sequence (UC01) and what is walked</h2><ol class="steps">' +
+      '<li class="off">Echo detects the meal condition <em>(inside the system, not walked)</em></li>' +
+      '<li class="on"><b>Step 2.</b> Echo gives a gentle spoken prompt.</li>' +
+      '<li class="off">Echo observes the response; the camera stays off until kitchen activity <em>(not walked)</em></li>' +
+      '<li class="on"><b>Step 4.</b> Cleber responds: eats, says “not now” (one postponement restarts the sequence), or does not respond; Echo waits and reminds again.</li>' +
+      '<li class="on"><b>Step 5.</b> At most three reminders, with no increase in pressure or volume.</li>' +
+      '<li class="on"><b>Step 6</b> (Sarah’s path). If still unconfirmed, Echo tells Sarah what kind of outcome it was.</li>' +
+      '<li class="on"><b>Step 7.</b> Echo stops and rests; if Cleber eats after Sarah calls, Sarah gets a “resolved” update.</li>' +
+      '<li class="off">Plate-away log and visit summary <em>(steps 8–9, not walked)</em></li></ol></section>' +
+      '<section class="card"><h2>For the evaluator</h2><p>At each step, answer the four questions from your persona’s point of view and <b>justify each answer</b>. Then choose what your persona would do. Note success stories, failure stories and design suggestions. At the end, hand your notes to the hosts. Echo’s words are placeholder wording.</p></section>' +
+      sessionCard() +
+      simNotice() +
+      '<div class="center"><button class="btn primary big" data-action="start">Start walkthrough as Cleber</button></div></main>';
+  }
+
+  function stage(opts) {
+    var s = ST;
+    var pill = opts.pill ? '<span class="pill">' + EP.esc(opts.pill) + '</span>' : '<span></span>';
+    return '<div class="stage-wrap">' +
+      '<div class="stage-top">' + pill + '<span class="pill clock" title="' + EP.esc(EP.t('sim_time')) + '">🕑 ' + EP.fmtTime(s.clock) + '</span></div>' +
+      '<div class="scene-box">' + EP.scene.html() + '<div id="caption" class="caption" aria-live="polite"></div></div>' +
+      '<div class="voice" role="img" aria-label="' + EP.esc(EP.t('voice_level') + ': ' + EP.t('voice_same')) + '"><span>' + EP.esc(EP.t('voice_level')) + '</span><i></i><i></i><i></i><em>' + EP.esc(EP.t('voice_same')) + '</em>' +
+      '<button class="btn ghost small" data-action="replay">' + EP.esc(EP.t('replay')) + '</button></div>' +
+      '<p id="status-text" class="status-text" aria-live="polite">' + (opts.status ? EP.esc(opts.status) : '') + '</p>' +
+      '<div class="choices">' + (opts.choices || '') + '</div></div>';
+  }
+
+  function btn(action, label, extra) {
+    return '<button class="btn choice" data-action="' + action + '"' + (extra || '') + '>' + EP.esc(label) + '</button>';
+  }
+
+  function panel(inner) { return '<aside class="panel" id="panel">' + inner + '</aside>'; }
+
+  function view() {
+    if (ST.screen === 'brief') { el.innerHTML = header() + briefing(); return; }
+    var s = ST, id = cardId(), gated = false, body = '';
+    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save, onChange: refreshGate };
+
+    if (s.screen === 'reminder') {
+      var locked = !EP.wt.answered(s.notes[id]) && !s.skip[id];
+      gated = locked;
+      body = stage({
+        pill: EP.t('reminder_of', { n: s.n }),
+        choices: btn('kitchen', EP.t('a_kitchen'), locked ? ' disabled' : '') + btn('notnow', EP.t('a_notnow'), locked ? ' disabled' : '') + btn('nothing', EP.t('a_nothing'), locked ? ' disabled' : '') +
+          '<p class="gate-hint" id="gate-hint"' + (locked ? '' : ' hidden') + '>Answer the four questions on the right, then choose what Cleber would do. <button class="linkbtn" data-action="skip-gate">Skip the questions</button></p>'
+      }) + panel(EP.wt.formHtml(s.notes, id, {}));
+    } else if (s.screen === 'kitchen') {
+      body = stage({
+        pill: EP.t('reminder_of', { n: s.n }), status: EP.t('kitchen_quiet'),
+        choices: btn('eat_done', EP.t('a_eat_done')) + btn('eat_silent', EP.t('a_eat_silent')) + btn('leave', EP.t('a_leave'))
+      }) + panel(EP.wt.formHtml(s.notes, id, { after: 'After Cleber’s action: what did Echo do, and was it clear what was happening?' }));
+    } else if (s.screen === 'result') {
+      var p = s.pending || {}, status = '';
+      if (p.type === 'advance') status = EP.t('wait_n', { n: p.wait });
+      else if (p.type === 'restart') status = EP.t('wait_restart', { n: p.wait });
+      else if (p.type === 'close' && !s.say) status = EP.t('meal_finished');
+      body = stage({ pill: EP.t('reminder_of', { n: s.n }), status: status, choices: btn('next', EP.t('next'), ' data-primary="1"') }) +
+        panel(EP.wt.formHtml(s.notes, id, { after: 'After Cleber’s action: what did Echo do, and was it clear what was happening?' }));
+    } else if (s.screen === 'closure') {
+      var behind = s.escalated
+        ? '<p class="behind"><b>Behind the scenes (not seen by Cleber):</b> Echo has told Sarah that lunch is unresolved (' + EP.esc(outcomeName(s.outcome)) + '). Sarah’s phone shows the alert now.</p>'
+        : '<p class="behind"><b>Behind the scenes:</b> eating is confirmed, so Echo stops prompting for this meal.</p>';
+      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1"') + behind }) + panel(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+    } else if (s.screen === 'after') {
+      body = stage({
+        status: EP.t('echo_rests'),
+        choices: '<p class="choice-title">Scenario: what happens next? (Sarah’s phone shows the “resolved” update only if Cleber eats)</p>' +
+          btn('later_eats', EP.t('a_later_eats')) + btn('later_no', EP.t('a_later_no'))
+      }) + panel(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+    } else if (s.screen === 'followup') {
+      body = '<div class="stage-wrap solo"><h1>Thank you</h1><p class="lead">You have finished stepping through Cleber’s path. Please answer these open questions, then hand your notes to the hosts.</p>' +
+        '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button></div></div>' + panel(EP.wt.followupHtml(s.followup));
+    } else if (s.screen === 'done') {
+      body = '<div class="stage-wrap solo"><h1>Walkthrough complete</h1><p class="lead">Hand your notes to the hosts: print them, or download the file.</p>' +
+        summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="restart">Start over</button></div></div>';
+    }
+    el.innerHTML = header() + '<div class="layout' + (s.screen === 'done' ? ' single' : '') + '">' + body + '</div>' + simNotice();
+    afterRender(gated);
+  }
+
+  function outcomeName(o) { return o === 'notnow' ? 'refusal' : (o === 'kitchen' ? 'uncertain' : 'non-response'); }
+
+  function summary() {
+    var ids = Object.keys(ST.notes);
+    if (!ids.length) return '<p class="hint">No answers were recorded.</p>';
+    return '<ul class="sumlist">' + ids.map(function (id) {
+      var e = ST.notes[id], yes = ['a', 'b', 'c', 'd'].filter(function (k) { return e.q[k] && e.q[k].ans === 'yes'; }).length;
+      return '<li><b>' + EP.esc(e.step) + '</b> ' + EP.esc(e.title) + ': ' + yes + ' of 4 answered yes</li>';
+    }).join('') + '</ul>';
+  }
+
+  function refreshGate() {
+    var id = cardId();
+    if (ST.screen !== 'reminder') return;
+    var open = EP.wt.answered(ST.notes[id]) || ST.skip[id];
+    el.querySelectorAll('.choices .choice').forEach(function (b) { b.disabled = !open; });
+    var h = document.getElementById('gate-hint');
+    if (h) h.hidden = !!open;
+  }
+
+  /* What Echo does on each screen (light, lean, speech). */
+  function afterRender(gated, speak) {
+    EP.scene.mount();
+    var s = ST;
+    EP.scene.set({ plate: s.plate, lean: false });
+    if (s.screen === 'reminder') {
+      EP.scene.set({ mode: 'awake', lean: true });
+      if (speak) EP.scene.say('r' + s.n);
+      else { var c = document.getElementById('caption'); if (c && EP.settings.captions) { c.textContent = '“' + EP.t('r' + s.n) + '”'; c.classList.add('show'); } }
+    } else if (s.screen === 'kitchen') {
+      EP.scene.set({ mode: 'quiet' });
+    } else if (s.screen === 'result') {
+      EP.scene.set({ mode: s.say ? 'awake' : 'rest' });
+      if (s.say && speak) EP.scene.say(s.say, { instant: true, lean: false, rest: true });
+      else if (s.say) { var c2 = document.getElementById('caption'); if (c2 && EP.settings.captions) { c2.textContent = '“' + EP.t(s.say) + '”'; c2.classList.add('show'); } }
+    } else {
+      EP.scene.set({ mode: 'rest' });
+    }
+  }
+
+  /* ---------- transitions ---------- */
+  function go(screen, speak) { ST.screen = screen; save(); view(); if (speak) afterRender(false, true); }
+
+  function giveReminder(speak) { ST.times.push(ST.clock); ST.screen = 'reminder'; save(); view(); if (speak) afterRender(false, true); pushState(); }
+
+  var actions = {
+    start: function () { ST.plate = 'cold'; ST.clock = 12 * 60 + 30; ST.times = []; giveReminder(true); },
+    kitchen: function () { ST.last = 'kitchen'; ST.plate = 'warm'; ST.say = null; go('kitchen'); },
+    notnow: function () {
+      ST.last = 'notnow';
+      if (ST.postponed === 0) { ST.postponed = 1; ST.pending = { type: 'restart', wait: 30 }; ST.say = 'ack1'; }
+      else { ST.pending = { type: 'advance', wait: 10 }; ST.say = 'ack2'; }
+      go('result', true);
+    },
+    nothing: function () { ST.last = 'none'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
+    leave: function () { ST.last = 'kitchen'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
+    eat_done: function () { ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = 'done'; go('result', true); },
+    eat_silent: function () { ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = null; go('result'); },
+    next: function () {
+      var p = ST.pending || {};
+      EP.scene.clear();
+      ST.say = null;
+      if (p.type === 'restart') { ST.clock += p.wait; ST.n = 1; giveReminder(true); }
+      else if (p.type === 'advance') {
+        if (ST.n < 3) { ST.n++; ST.clock += p.wait; giveReminder(true); }
+        else {
+          ST.clock += p.wait; ST.escalated = true; ST.outcome = ST.last; ST.alertAt = ST.clock; ST.sarahPhase = 'alert';
+          pushState(); go('closure');
+        }
+      } else { ST.escalated = false; go('closure'); }
+    },
+    'skip-gate': function () { ST.skip[cardId()] = true; save(); refreshGate(); },
+    replay: function () {
+      var s = ST;
+      if (s.screen === 'reminder') EP.scene.say('r' + s.n);
+      else if (s.screen === 'result' && s.say) EP.scene.say(s.say, { instant: true, lean: false, rest: true });
+    },
+    later_eats: function () { ST.clock += 25; ST.resolvedAt = ST.clock; ST.sarahPhase = 'resolved'; pushState(); go('followup'); },
+    later_no: function () { go('followup'); },
+    finish: function () { go('done'); },
+    print: function () { EP.router.go('#/notes'); },
+    download: function () { EP.wt.download(exportAll(), 'echo-walkthrough-' + ST.code + '.json'); },
+    restart: function () { restart(); },
+    'copy-link': function () {
+      var inp = el.querySelector('.session-card input') || document.querySelector('.session-card input');
+      try { navigator.clipboard.writeText(link()); } catch (e) { if (inp) { inp.select(); document.execCommand('copy'); } }
+    }
+  };
+  // the closure screen's "Continue" differs from the result screen's
+  var resultNext = actions.next;
+  actions.next = function () {
+    if (ST.screen === 'closure') { go(ST.escalated ? 'after' : 'followup'); return; }
+    resultNext();
+  };
+
+  function restart() {
+    EP.scene.clear();
+    var code = ST.code;
+    ST = fresh(code); save(); pushState(); view();
+  }
+
+  function exportAll() {
+    return EP.wt.exportData({ code: ST.code, language: EP.lang, finalOutcome: ST.escalated ? outcomeName(ST.outcome) : 'eating confirmed', postponements: ST.postponed },
+      { notes: ST.notes, followup: ST.followup },
+      { notes: ST.sarahNotes, events: ST.sarahEvents });
+  }
+  EP.exportAll = function () {
+    var raw = EP.store.get(KEY, null);
+    if (!raw) return null;
+    var keep = ST; ST = raw;
+    var d = exportAll(); ST = keep || raw;
+    return d;
+  };
+
+  /* ---------- modals / menu ---------- */
+  function modal(html) {
+    var m = document.getElementById('modal-root');
+    if (m) m.innerHTML = html;
+  }
+  function menuHtml() {
+    return '<div class="modal-back"><div class="modal" role="dialog" aria-modal="true">' +
+      '<div class="modal-head"><h2>' + EP.esc(EP.t('ui_menu')) + '</h2><button class="btn ghost" data-action="close-modal">' + EP.esc(EP.t('ui_close')) + '</button></div>' +
+      '<div class="menu-list"><button class="btn" data-action="open-session">' + EP.esc(EP.t('ui_session')) + '</button>' +
+      '<button class="btn" data-action="print">' + EP.esc(EP.t('ui_export')) + ' (print)</button>' +
+      '<button class="btn" data-action="download">' + EP.esc(EP.t('ui_export')) + ' (.json)</button>' +
+      '<button class="btn danger" data-action="confirm-restart">' + EP.esc(EP.t('ui_restart')) + '</button></div></div></div>';
+  }
+  function sessionHtml() {
+    return '<div class="modal-back"><div class="modal wide" role="dialog" aria-modal="true">' +
+      '<div class="modal-head"><h2>' + EP.esc(EP.t('ui_session')) + '</h2><button class="btn ghost" data-action="close-modal">' + EP.esc(EP.t('ui_close')) + '</button></div>' +
+      sessionCard() + '</div></div>';
+  }
+
+  /* ---------- public ---------- */
+  EP.cleber = {
+    mount: function (container) {
+      el = container;
+      ST = EP.store.get(KEY, null) || fresh();
+      save();
+      openSync();
+      view();
+    },
+    unmount: function () { EP.scene.clear(); EP.sync.close(); },
+    rerender: function () { view(); },
+    handle: function (action, target) {
+      if (action === 'start') { actions.start(); return true; }
+      if (action === 'open-menu') { modal(menuHtml()); return true; }
+      if (action === 'open-session') { modal(sessionHtml()); return true; }
+      if (action === 'close-modal') { modal(''); return true; }
+      if (action === 'confirm-restart') { modal(''); if (window.confirm('Restart the walkthrough? Notes already entered will be lost.')) { restart(); EP.cleber.rerender(); } return true; }
+      if (actions[action]) {
+        actions[action](target);
+        return true;
+      }
+      return false;
+    }
+  };
+})();
