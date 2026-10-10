@@ -18,7 +18,7 @@
       '<ellipse class="echo-shadow" cx="75" cy="241" rx="58" ry="8"/>' +
       '<g class="echo-float">' +
       '<ellipse class="echo-halo" cx="75" cy="120" rx="110" ry="130" fill="url(#halo)"/>' +
-      '<image class="echo-img" href="img/echo.png" x="0" y="0" width="150" height="240"/>' +
+      '<image class="echo-img" href="img/echo.png?v=3" x="0" y="0" width="150" height="240"/>' +
       LIGHTS.map(function (l) { return '<circle class="led" cx="' + l[0] + '" cy="' + l[1] + '" r="' + l[2] + '" fill="url(#led)"/>'; }).join('') +
       '</g></g></g>';
   }
@@ -103,7 +103,7 @@
         }
         if (!EP.settings.voice) { later(finish, ms); return; }
         try {
-          audio = new Audio('audio/' + EP.lang + '/' + key + '.mp3');
+          audio = new Audio('audio/' + EP.lang + '/' + key + '.mp3?v=3');
           audio.volume = 0.85;   // the same level on every reminder: no rising pressure
           audio.onended = function () { later(finish, 500); };
           audio.onerror = function () { audio = null; fallbackVoice(); };

@@ -7,7 +7,7 @@
   var snap = { phase: 'none' };
   var standalone = false;
 
-  function fresh() { return { code: null, localMode: 'step', review: false, card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
+  function fresh() { return { code: null, localMode: 'end', review: false, card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
   function save() { EP.store.set(KEY, SS); }
 
   function sendEvent(kind) {
@@ -99,7 +99,7 @@
       h += '<p class="hint">Sarah has responded.</p>';
     }
     if (standalone) {
-      h += '<hr><div class="seg" role="radiogroup"><button type="button" class="' + (SS.localMode !== 'end' ? 'on' : '') + '" data-action="s-mode" data-val="step">Questions after each step</button><button type="button" class="' + (SS.localMode === 'end' ? 'on' : '') + '" data-action="s-mode" data-val="end">Questions at the end</button></div>' +
+      h += '<hr><div class="seg" role="radiogroup"><button type="button" class="' + (SS.localMode === 'end' ? 'on' : '') + '" data-action="s-mode" data-val="end">Questions at the end</button><button type="button" class="' + (SS.localMode !== 'end' ? 'on' : '') + '" data-action="s-mode" data-val="step">After each step</button></div>' +
         '<label class="field"><span>Scenario outcome</span><select id="s-outcome"><option value="none">Cleber did not respond (non-response)</option><option value="notnow">Cleber said “not now” (refusal)</option><option value="kitchen">Went to the kitchen, eating not confirmed (uncertain)</option></select></label>' +
         '<div class="row"><button class="btn primary" data-action="s-send">Send unresolved-meal alert</button>' +
         '<button class="btn" data-action="s-resolve"' + (snap.phase === 'alert' ? '' : ' disabled') + '>Cleber eats later → “resolved”</button>' +
@@ -124,7 +124,7 @@
 
   function reviewHtml() {
     var ids = ['S6'].concat(snap.phase === 'resolved' ? ['S7'] : []);
-    return '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">Answer the four questions as Sarah for each step you saw.</p><div class="review">' +
+    return '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">For each step you saw, answer as Sarah.</p><div class="review">' +
       ids.map(function (id, i) {
         var m = EP.wt.meta(id);
         return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' +
@@ -143,8 +143,8 @@
     el.innerHTML = header() +
       (end ? '' : '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
       '<div class="layout sarah' + (end ? ' single' : '') + ' tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
-      (end && hasForm ? '<button class="btn primary" data-action="s-review">I have seen enough: answer the questions</button>' : '') + '</div>' + panel() + '</div>' +
-      '<p class="sim-note">Simulation: this phone is played by the prototype. Nothing is sent to a real phone.</p>';
+      (end && hasForm ? '<button class="btn primary" data-action="s-review">Answer the questions</button>' : '') + '</div>' + panel() + '</div>' +
+      '<p class="sim-note">Simulation: nothing is sent to a real phone.</p>';
   }
 
   function sendLocalSnapshot(outcome) {

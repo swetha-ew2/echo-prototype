@@ -50,7 +50,7 @@ a { color: var(--accent); }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .6rem 1rem; border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 20; flex-wrap: wrap; }
 .brand { display: flex; align-items: center; gap: .6rem; }
 .brand small { display: block; color: var(--muted); font-size: .75rem; }
-.logo { width: 34px; height: 34px; background: url(../img/echo-head.png) center / contain no-repeat; flex: none; }
+.logo { width: 34px; height: 34px; background: url(../img/echo-head.png?v=3) center / contain no-repeat; flex: none; }
 .top-actions { display: flex; align-items: center; gap: .5rem; }
 .icon-btn { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 1.15rem; cursor: pointer; }
 .chip-btn { display: inline-flex; align-items: center; gap: .45rem; min-height: 36px; padding: 0 .8rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: .82rem; cursor: pointer; font-family: inherit; }
@@ -256,3 +256,4 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .review .wt h2 { display: none; }
 .seg.wide { margin: .4rem 0 1rem; }
 .review .wt-head { display: none; }
+.mode-line { margin-top: 1rem; color: var(--muted); font-size: .9rem; } .linkbtn.cur { font-weight: 700; text-decoration: none; color: var(--ink); } details.card > summary { cursor: pointer; min-height: 36px; }

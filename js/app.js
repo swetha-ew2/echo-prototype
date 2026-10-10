@@ -13,18 +13,16 @@
 
   function home() {
     var resume = EP.store.get('echo.cleber', null);
-    root.innerHTML = '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype · AT-01 · B1</small></div></div>' +
+    root.innerHTML = '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype</small></div></div>' +
       '<div class="top-actions"><button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button></div></header>' +
-      '<main class="brief"><h1>Echo meal check-in</h1>' +
-      '<p class="lead">A clickable prototype for the cognitive walkthrough of use case UC01 (“Support Cleber through a planned meal”).</p>' +
+      '<main class="brief"><h1>Echo meal check-in</h1><p class="lead">Walkthrough prototype for UC01.</p>' +
       '<div class="brief-grid">' +
-      '<section class="card"><h2>Hosts / Cleber’s screen</h2><p>Opens the briefing, the session QR code and Cleber’s walkthrough (steps 2, 4, 5 and 7).</p>' +
-      (resume ? '<p><button class="btn primary" data-action="home-resume">Resume session ' + EP.esc(resume.code) + '</button></p><p><button class="btn" data-action="home-new">Start a new session</button></p>'
+      '<section class="card"><h2>Cleber’s screen (hosts)</h2>' +
+      (resume ? '<p><button class="btn primary" data-action="home-resume">Resume session ' + EP.esc(resume.code) + '</button></p><p><button class="btn" data-action="home-new">New session</button></p>'
               : '<p><button class="btn primary" data-action="home-new">Start a session</button></p>') + '</section>' +
-      '<section class="card"><h2>Sarah’s phone</h2><p>For a second evaluator. Scan the QR code on Cleber’s screen, or enter the session code.</p>' +
-      '<p class="linkline"><input id="join-code" maxlength="5" placeholder="Code" autocapitalize="characters" aria-label="Session code"> <button class="btn primary" data-action="home-join">Join</button></p>' +
-      '<p><button class="linkbtn" data-action="home-sarah-alone">Open without a session</button></p></section></div>' +
-      '<p class="sim-note">Simulation: nothing here senses, decides or logs anything. See the README for what is in and out of scope.</p></main>';
+      '<section class="card"><h2>Sarah’s phone</h2>' +
+      '<p class="linkline"><input id="join-code" maxlength="5" placeholder="Session code" autocapitalize="characters" aria-label="Session code"> <button class="btn primary" data-action="home-join">Join</button></p>' +
+      '<p><button class="linkbtn" data-action="home-sarah-alone">Open without a session</button></p></section></div></main>';
   }
 
   function notesPage() {

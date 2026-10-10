@@ -10,7 +10,7 @@
     return {
       code: code || EP.sync.newCode(), screen: 'brief', n: 1, postponed: 0, last: 'none', clock: 12 * 60 + 30,
       times: [], pending: null, say: null, escalated: false, outcome: null, alertAt: null, resolvedAt: null,
-      sarahPhase: 'none', notes: {}, followup: {}, visited: [], mode: 'step', sarahNotes: {}, sarahEvents: [], plate: 'cold'
+      sarahPhase: 'none', notes: {}, followup: {}, visited: [], mode: 'end', sarahNotes: {}, sarahEvents: [], plate: 'cold'
     };
   }
   function save() { EP.store.set(KEY, ST); }
@@ -85,35 +85,31 @@
   }
 
   function simNotice() {
-    return '<p class="sim-note">Simulation: nothing here senses, decides or logs anything. The prototype plays Echo and Sarah’s phone; the evaluator imagines the persona.</p>';
+    return '<p class="sim-note">Simulation: nothing here senses or logs anything.</p>';
   }
 
   function briefing() {
     return '<main class="brief">' +
-      '<h1>Cognitive walkthrough: UC01</h1>' +
-      '<p class="lead">Support Cleber through a planned meal. <b>Hosts:</b> read this page aloud to the evaluators, then start. Do not intervene while they work; take notes and do not explain problems away.</p>' +
-      '<div class="brief-grid">' +
-      '<section class="card"><h2>Objective</h2><p>Cleber (the evaluator’s persona) wants to <b>decide for himself how to respond</b> to Echo’s meal reminders. Echo’s purpose is that he starts and completes his planned meals more consistently (OBJ-01) while keeping control (OBJ-02).</p></section>' +
-      '<section class="card"><h2>Scenario</h2><p>It is 12:30, Cleber’s planned lunchtime. Sarah left a prepared meal for him earlier. He has not been near the kitchen. Echo, a small tabletop robot in the kitchen, begins its check-in.</p></section>' +
-      '<section class="card"><h2>Persona A: Cleber</h2><p>Lives alone in an apartment and eats three planned meals a day. Some days he is in another room or asleep and misses his alarm or notes, two or three times a week. He values independence and security. <i>Evidence is provisional (from his grandson Gilbert).</i></p></section>' +
-      '<section class="card"><h2>Persona B: Sarah</h2><p>Cleber’s caregiver. She visits every two to three days, prepares meals, and also supports other clients, so she cannot always respond at once. She wants alerts only for genuinely concerning situations, and does not want Cleber to feel watched.</p></section>' +
-      '</div>' +
-      '<section class="card"><h2>Action Sequence (UC01) and what is walked</h2><ol class="steps">' +
-      '<li class="off">Echo detects the meal condition <em>(inside the system, not walked)</em></li>' +
-      '<li class="on"><b>Step 2.</b> Echo gives a gentle spoken prompt.</li>' +
-      '<li class="off">Echo observes the response; the camera stays off until kitchen activity <em>(not walked)</em></li>' +
-      '<li class="on"><b>Step 4.</b> Cleber responds: eats, says “not now” (one postponement restarts the sequence), or does not respond; Echo waits and reminds again.</li>' +
-      '<li class="on"><b>Step 5.</b> At most three reminders, with no increase in pressure or volume.</li>' +
-      '<li class="on"><b>Step 6</b> (Sarah’s path). If still unconfirmed, Echo tells Sarah what kind of outcome it was.</li>' +
-      '<li class="on"><b>Step 7.</b> Echo stops and rests; if Cleber eats after Sarah calls, Sarah gets a “resolved” update.</li>' +
-      '<li class="off">Plate-away log and visit summary <em>(steps 8–9, not walked)</em></li></ol></section>' +
-      '<section class="card"><h2>For the evaluator</h2><p>Step through the sequence as your persona. For each step, answer the four questions (one tap each, plus a short reason). Add success stories, failure stories and design suggestions if you have them. At the end, hand your notes to the hosts. Echo’s words are placeholder wording.</p>' +
-      '<p><b>When to answer the questions?</b></p><div class="seg wide" role="radiogroup">' +
-      '<button type="button" role="radio" aria-checked="' + (ST.mode === 'step') + '" class="' + (ST.mode === 'step' ? 'on' : '') + '" data-action="mode-step">After each step (as in the method)</button>' +
-      '<button type="button" role="radio" aria-checked="' + (ST.mode === 'end') + '" class="' + (ST.mode === 'end' ? 'on' : '') + '" data-action="mode-end">All together at the end</button></div></section>' +
+      '<h1>UC01: Support Cleber through a planned meal</h1>' +
+      '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
+      '<p>Evaluators: step through as your persona, then answer the questions at the end. Hosts: do not intervene; take notes.</p>' +
+      '<details class="card"><summary><b>Personas and action sequence</b> (for the hosts)</summary>' +
+      '<p><b>Cleber</b> lives alone, eats three planned meals a day, and sometimes misses his alarm or notes (other room, asleep). He values independence and security.</p>' +
+      '<p><b>Sarah</b>, his caregiver, visits every two to three days and also supports other clients, so she cannot always respond at once. She wants alerts only for concerning situations and does not want Cleber to feel watched.</p>' +
+      '<ol class="steps">' +
+      '<li class="off">1. Echo detects the meal condition <em>(not walked)</em></li>' +
+      '<li class="on">2. Echo gives a gentle spoken prompt.</li>' +
+      '<li class="off">3. Echo observes the response <em>(not walked)</em></li>' +
+      '<li class="on">4. Cleber responds (eats, “not now” once restarts the sequence, or no response); Echo waits and reminds again.</li>' +
+      '<li class="on">5. At most three reminders, no more pressure or volume.</li>' +
+      '<li class="on">6. Still unconfirmed: Echo tells Sarah (Sarah’s path).</li>' +
+      '<li class="on">7. Echo stops and rests; Sarah gets a “resolved” update if Cleber eats.</li>' +
+      '<li class="off">8–9. Plate-away log and visit summary <em>(not walked)</em></li></ol></details>' +
       sessionCard() +
-      simNotice() +
-      '<div class="center"><button class="btn primary big" data-action="start">Start walkthrough as Cleber</button></div></main>';
+      '<div class="center"><button class="btn primary big" data-action="start">Start as Cleber</button>' +
+      '<p class="mode-line">Answer the questions: ' +
+      '<button type="button" class="linkbtn' + (ST.mode === 'end' ? ' cur' : '') + '" data-action="mode-end">at the end</button> · ' +
+      '<button type="button" class="linkbtn' + (ST.mode === 'step' ? ' cur' : '') + '" data-action="mode-step">after each step</button></p></div></main>';
   }
 
   function stage(opts) {
@@ -146,7 +142,7 @@
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }),
         choices: btn('kitchen', EP.t('a_kitchen')) + btn('notnow', EP.t('a_notnow')) + btn('nothing', EP.t('a_nothing')) +
-          (step ? '<p class="gate-hint">Answer the questions on the right for this step, then choose what Cleber would do.</p>' : '<p class="gate-hint">Choose what Cleber would do. You will answer the questions at the end.</p>')
+          ''
       }) + P(EP.wt.formHtml(s.notes, id, {}));
     } else if (s.screen === 'kitchen') {
       body = stage({
@@ -172,16 +168,16 @@
           btn('later_eats', EP.t('a_later_eats')) + btn('later_no', EP.t('a_later_no'))
       }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
     } else if (s.screen === 'review') {
-      body = '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">Open each step you walked and answer the four questions as Cleber. Sarah’s evaluator answers on their own phone.</p><div class="review">' +
+      body = '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">For each step you walked, answer as Cleber.</p><div class="review">' +
         s.visited.map(function (vid, i) {
           var m = EP.wt.meta(vid);
           return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' + EP.wt.formHtml(s.notes, vid, { after: qNote }) + '</details>';
         }).join('') + '</div><div class="choices"><button class="btn primary big" data-action="to-followup">Continue</button></div></div>';
     } else if (s.screen === 'followup') {
-      body = '<div class="stage-wrap solo"><h1>Thank you</h1><p class="lead">You have finished stepping through Cleber’s path. Please answer these open questions, then hand your notes to the hosts.</p>' +
+      body = '<div class="stage-wrap solo"><h1>Last questions</h1><p class="lead">Think back over the whole walkthrough.</p>' +
         '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button></div></div>' + panel(EP.wt.followupHtml(s.followup));
     } else if (s.screen === 'done') {
-      body = '<div class="stage-wrap solo"><h1>Walkthrough complete</h1><p class="lead">Hand your notes to the hosts: print them, or download the file.</p>' +
+      body = '<div class="stage-wrap solo"><h1>Done. Hand your notes to the hosts.</h1>' +
         summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="restart">Start over</button></div></div>';
     }
     var single = s.screen === 'done' || s.screen === 'review' || (!step && ['reminder', 'kitchen', 'result', 'closure', 'after'].indexOf(s.screen) >= 0);
@@ -324,7 +320,7 @@
     mount: function (container) {
       el = container;
       ST = EP.store.get(KEY, null) || fresh();
-      ST.mode = ST.mode || 'step'; ST.visited = ST.visited || [];
+      ST.mode = ST.mode || 'end'; ST.visited = ST.visited || [];
       save();
       openSync();
       view();
