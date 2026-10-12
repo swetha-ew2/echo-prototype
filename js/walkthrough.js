@@ -44,11 +44,10 @@
     ['q3', 'Would you want Echo to stay quiet at any point? When?']
   ];
 
-  /* Persona cards for the evaluator, taken from the design documents (ST-01, SA-01, PS-01; HP-01, ST-03). */
+  /* Persona cards for the evaluator. */
   EP.personas = {
     cleber: function (open) {
       return '<details class="persona"' + (open ? ' open' : '') + '><summary><b>Your persona: Cleber</b></summary>' +
-        '<p class="hint">There is no full human persona for Cleber yet. This is from the stakeholder description (ST-01), his meal routine (SA-01) and the problem scenario (PS-01). It rests on proxy evidence from his grandson Gilbert and is provisional.</p>' +
         '<ul>' +
         '<li><b>Lives alone</b> in an apartment. Sarah, his caregiver, comes every two to three days and leaves prepared meals ready.</li>' +
         '<li><b>Meals:</b> three planned meals a day, 30 minutes to an hour each. He gets up, walks to the kitchen, heats the meal in the microwave and eats.</li>' +
@@ -60,7 +59,6 @@
     },
     sarah: function (open) {
       return '<details class="persona"' + (open ? ' open' : '') + '><summary><b>Your persona: Sarah</b></summary>' +
-        '<p class="hint">From HP-01 and ST-03 (direct observation, provisional).</p>' +
         '<ul>' +
         '<li><b>Role:</b> Cleber’s caregiver. She receives the alerts and summaries and decides how to follow up. Cleber, not Sarah, hears the meal reminders.</li>' +
         '<li><b>Availability:</b> mobile and can travel to his home, but she also cares for other clients. She is not on standby and cannot always respond at once.</li>' +
@@ -81,7 +79,7 @@
       var m = /^R(\d)(b?)$/.exec(id);
       if (m) {
         var n = parseInt(m[1], 10), again = !!m[2];
-        var step = n === 1 ? 'UC01 step 2' : (n === 2 ? 'UC01 step 4' : 'UC01 step 5');
+        var step = n === 1 ? 'Step 2' : (n === 2 ? 'Step 4' : 'Step 5');
         var effect = n === 1
           ? 'Cleber notices Echo’s spoken prompt and is able to respond the way he wants: go to the kitchen, say “not now”, or not respond.'
           : 'Cleber notices the follow-up and can still respond the way he wants. It is not louder or more pressing than before.';
@@ -93,15 +91,15 @@
         };
       }
       if (id === 'CLOSE') return {
-        step: 'UC01 step 7', title: 'Echo stops prompting and rests', persona: 'Cleber',
+        step: 'Step 7', title: 'Echo stops prompting and rests', persona: 'Cleber',
         effect: 'Cleber understands that Echo has finished for this meal and is not going to keep prompting him.'
       };
       if (id === 'S6') return {
-        step: 'UC01 step 6', title: 'Unresolved-meal alert', persona: 'Sarah',
+        step: 'Step 6', title: 'Unresolved-meal alert', persona: 'Sarah',
         effect: 'Sarah understands what happened with Cleber’s lunch and can decide whether to call him, visit, or wait.'
       };
       if (id === 'S7') return {
-        step: 'UC01 step 7', title: '“Resolved” update', persona: 'Sarah',
+        step: 'Step 7', title: '“Resolved” update', persona: 'Sarah',
         effect: 'Sarah knows the situation is resolved and that no further action is needed.'
       };
       return { step: '', title: id, persona: '', effect: '' };
@@ -141,13 +139,19 @@
       options = options || {};
       var e = EP.wt.ensure(notes, id), m = EP.wt.meta(id), esc = EP.esc;
       if (options.set && SETS[options.set] && e.sets.indexOf(options.set) < 0) e.sets.push(options.set);
-      var multi = e.sets.length > 1;
+      /* Only the questions of the step on screen are shown. Questions of an earlier step of this reminder come back
+         only while they are still unanswered, because they are required before Continue. */
+      var current = options.set || e.sets[e.sets.length - 1];
+      var shown = e.sets.filter(function (sid) {
+        return sid === current || (SETS[sid] && SETS[sid].qs.some(function (q) { return !(e.q[q[0]] && e.q[q[0]].ans); }));
+      }).sort(function (x, y) { return (x === current) - (y === current); });
+      var multi = shown.length > 1;
       var h = '<section class="wt" data-card="' + id + '">' +
         '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
         '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>';
-      var groups = e.sets.length ? e.sets.map(function (sid) { return { title: SETS[sid] && SETS[sid].title, qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
+      var groups = e.sets.length ? shown.map(function (sid) { return { title: SETS[sid] && SETS[sid].title + (sid === current ? '' : ' (not answered yet)'), qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
       groups.forEach(function (g) {
         if (multi && g.title) h += '<h3 class="qset">' + esc(g.title) + '</h3>';
         else if (g.title) h += '<p class="qset-one">' + esc(g.title) + '</p>';
@@ -257,7 +261,7 @@
           }
           if (r.checks && r.checks.length) {
             var cs = r.checksSummary || {};
-            extra += '<p class="hint"><b>Conformance (M-04):</b> ' + esc(cs.pass) + ' pass, ' + esc(cs.fail) + ' fail, ' + esc(cs.na) + ' n/a. ' + (cs.fail ? 'Scenario FAILS.' : 'Scenario passes.') + '</p>' +
+            extra += '<p class="hint"><b>Conformance check:</b> ' + esc(cs.pass) + ' pass, ' + esc(cs.fail) + ' fail, ' + esc(cs.na) + ' n/a. ' + (cs.fail ? 'Scenario FAILS.' : 'Scenario passes.') + '</p>' +
               (cs.fail ? '<ul>' + r.checks.filter(function (c) { return c.status === 'fail'; }).map(function (c) { return '<li>' + esc(c.rule) + ': ' + esc(c.detail) + '</li>'; }).join('') + '</ul>' : '');
           }
           head += extra;
@@ -277,7 +281,7 @@
       }
       var fu = '';
       if (data.cleberPath && data.cleberPath.followup) {
-        fu = '<h2>Follow-up (UC01-F2-CL3)</h2><table>' + FOLLOWUP.map(function (q) {
+        fu = '<h2>Follow-up questions</h2><table>' + FOLLOWUP.map(function (q) {
           var f = data.cleberPath.followup[q[0]] || {};
           return '<tr><td class="k">' + esc(q[1]) + '</td><td class="v">' + esc(f.text || '–') + '</td></tr>';
         }).join('') + '</table>';

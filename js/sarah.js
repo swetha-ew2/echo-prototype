@@ -8,7 +8,7 @@
   var standalone = false;
   var pview = 'lock', ptab = 'steps';   // phone screen (lock or visit summary); panel tab (step questions or questionnaire)
 
-  function fresh() { return { code: null, runId: null, runs: [], card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, seenSummary: false, oq: { A: {}, B: {} }, events: [] }; }
+  function fresh() { return { code: null, runId: null, runs: [], card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, seenSummary: false, oq: { A: {}, B: {} }, events: [], resolvedEver: false, manual: {} }; }
   function save() { EP.store.set(KEY, SS); }
 
   function sendEvent(kind) {
@@ -27,7 +27,7 @@
   function newRun(runId) {
     var old = SS, runs = (old.runs || []).slice();
     if (hasNotes(old)) runs.push({ runId: old.runId, notes: old.notes });
-    SS = fresh(); SS.code = code; SS.runs = runs; SS.runId = runId; SS.events = old.events || [];
+    SS = fresh(); SS.code = code; SS.runs = runs; SS.runId = runId; SS.events = old.events || []; SS.resolvedEver = !!old.resolvedEver; SS.manual = old.manual || {};
     SS.oq = old.oq || SS.oq; SS.seenSummary = old.seenSummary;   // the questionnaire answers belong to the whole session
     pview = 'lock';
     sendNotes();
@@ -41,7 +41,7 @@
     if (msg.runId && msg.runId !== SS.runId) newRun(msg.runId);   // Cleber moved on to another scenario
     else if (msg.phase === 'none' && prevPhase !== 'none' && hasNotes(SS)) newRun(SS.runId);   // Cleber's side restarted
     if (msg.phase === 'alert' && !SS.seenAlert) { SS.seenAlert = true; tab = 'phone'; }
-    if (msg.phase === 'resolved' && !SS.seenResolved) { SS.seenResolved = true; }
+    if (msg.phase === 'resolved' && !SS.seenResolved) { SS.seenResolved = true; SS.resolvedEver = true; }
     save(); view();
   }
   function onStatus(st) {
@@ -56,7 +56,7 @@
   }
 
   function header() {
-    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Sarah’s phone · UC01 steps 6–7</small></div></div>' +
+    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Sarah’s phone</small></div></div>' +
       '<div class="top-actions">' + (standalone ? '<span class="chip-btn wait"><i></i>No session</span>' : chip()) +
       '<button class="btn ghost small" data-action="s-hostnotes">Host notes</button>' +
       '<button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button></div></header>';
@@ -153,8 +153,20 @@
   }
   function curCard() { return snap.phase === 'resolved' ? (SS.card === 'S6' ? 'S6' : 'S7') : 'S6'; }
 
+  /* Sarah's scenarios: ticked when her phone reports them, or by hand. */
+  function scnHtml() {
+    var seen = EP.scenarios.sarahSeen(SS.events, SS.resolvedEver || SS.seenResolved), list = EP.scenarios.LIST.filter(function (x) { return x.group === 'sarah'; });
+    var n = list.filter(function (x) { return seen[x.id] || SS.manual[x.id]; }).length;
+    return '<details class="scn-d sarah-scn" open><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + list.length + ' done</span></summary>' +
+      '<p class="hint">Try each one on the phone. It is ticked when the phone detects it, or tick it yourself.</p><ul class="scn-list">' + list.map(function (x) {
+        var auto = !!seen[x.id], st = auto || !!SS.manual[x.id];
+        return '<li class="' + (st ? 'done' : '') + '"><button class="scn-box' + (st && !auto ? ' manual' : '') + '" data-action="s-scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + st + '"' + (auto ? ' disabled' : '') + ' aria-label="' + EP.esc(x.title) + '">' + (st ? '✓' : '') + '</button>' +
+          '<div class="scn-item"><b>' + EP.esc(x.title) + '</b><span class="scn-how">' + EP.esc(x.how) + '</span></div></li>';
+      }).join('') + '</ul></details>';
+  }
+
   function panel() {
-    return '<aside class="panel">' + EP.personas.sarah() + '<div class="tabs2"><button class="' + (ptab === 'steps' ? 'on' : '') + '" data-action="s-ptab" data-ptab="steps">Step questions</button>' +
+    return '<aside class="panel">' + scnHtml() + EP.personas.sarah() + '<div class="tabs2"><button class="' + (ptab === 'steps' ? 'on' : '') + '" data-action="s-ptab" data-ptab="steps">Step questions</button>' +
       '<button class="' + (ptab === 'quest' ? 'on' : '') + '" data-action="s-ptab" data-ptab="quest">Open questions</button></div>' +
       (ptab === 'quest' ? questionnaireHtml() : stepsHtml()) + '</aside>';
   }
@@ -201,13 +213,14 @@
     's-send': function () {
       var sel = document.getElementById('s-outcome');
       var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []);
-      SS = Object.assign(fresh(), { runs: runs, runId: runs.length + 1, seenAlert: true, code: code, oq: SS.oq, seenSummary: SS.seenSummary }); pview = 'lock';
+      SS = Object.assign(fresh(), { runs: runs, runId: runs.length + 1, seenAlert: true, code: code, oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual }); pview = 'lock';
       sendLocalSnapshot(sel ? sel.value : 'none'); save(); view();
     },
     's-resolve': function () {
-      snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; save(); view();
+      snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; SS.resolvedEver = true; save(); view();
     },
-    's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); var keep = { oq: SS.oq, seenSummary: SS.seenSummary }; SS = fresh(); SS.runs = runs; SS.code = code; SS.oq = keep.oq; SS.seenSummary = keep.seenSummary; snap = { phase: 'none' }; pview = 'lock'; save(); view(); }
+    's-scn-check': function (t) { var id = t.getAttribute('data-id'); SS.manual[id] = !SS.manual[id]; save(); view(); },
+    's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); var keep = { oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual }; SS = fresh(); SS.events = keep.events; SS.resolvedEver = keep.resolvedEver; SS.manual = keep.manual; SS.runs = runs; SS.code = code; SS.oq = keep.oq; SS.seenSummary = keep.seenSummary; snap = { phase: 'none' }; pview = 'lock'; save(); view(); }
   };
 
   EP.sarah = {

@@ -1,5 +1,5 @@
 /* Cleber's evaluator screen (Path A) and the session host.
-   Walks UC01 steps 2, 4, 5 and 7 and drives what Sarah's phone shows (steps 6 and 7). */
+   Walks steps 2, 4, 5 and 7 and drives what Sarah's phone shows (steps 6 and 7). */
 (function () {
   var KEY = 'echo.cleber';
   var ST = null;          // persisted walkthrough state
@@ -99,7 +99,7 @@
 
   /* ---------- rendering ---------- */
   function header() {
-    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype · AT-01 · B1</small></div></div>' +
+    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype</small></div></div>' +
       '<div class="top-actions">' + syncChip() +
       '<button class="btn ghost small" data-action="open-hostnotes">Host notes</button>' +
       '<button class="btn ghost small" data-action="open-log">Event log</button>' +
@@ -115,7 +115,7 @@
     var again = ST.runs.length > 0;
     return '<main class="brief">' +
       (again ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
-      '<h1>UC01: Support Cleber through a planned meal</h1>' +
+      '<h1>Support Cleber through a planned meal</h1>' +
       '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
       '<p>Evaluators: step through as your persona and answer the Yes/No questions shown at each step; they are required before you can continue. Hosts: do not intervene; take notes.</p>' +
       EP.personas.cleber(true) +
@@ -208,7 +208,7 @@
     } else if (s.screen === 'runend') {
       body = runEndHtml();
     } else if (s.screen === 'followup') {
-      body = '<div class="stage-wrap solo final"><p class="eyebrow">Last step · Claim UC01-F2-CL3</p><h1>A few last questions</h1>' +
+      body = '<div class="stage-wrap solo final"><p class="eyebrow">Last step</p><h1>A few last questions</h1>' +
         '<p class="lead">Think back over all the scenarios you walked, as Cleber. Short answers are fine, and you can leave a box empty.</p>' +
         EP.wt.followupHtml(s.followup) +
         '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button><p class="hint">Your answers are saved as you type.</p></div></div>';
@@ -477,13 +477,11 @@
   function doneMap() {
     var m = {}, id;
     for (id in ST.done) m[id] = 'auto';
-    var seen = EP.scenarios.sarahSeen(ST.sarahEvents, ST.resolvedAt != null || ST.runs.some(function (r) { return r.resolvedAt; }));
-    for (id in seen) if (seen[id]) m[id] = 'auto';
-    for (id in ST.manual) if (ST.manual[id] && !m[id]) m[id] = 'manual';
+        for (id in ST.manual) if (ST.manual[id] && !m[id]) m[id] = 'manual';
     return m;
   }
   function scnPanel() {
-    var m = doneMap(), all = EP.scenarios.LIST, n = Object.keys(m).length, tgt = EP.scenarios.byId(ST.target);
+    var m = doneMap(), all = EP.scenarios.LIST.filter(function (x) { return x.group === 'cleber'; }), n = Object.keys(m).length, tgt = EP.scenarios.byId(ST.target);
     var busy = isRunning();
     var open = ST.scnOpen === undefined ? window.innerWidth >= 1250 : ST.scnOpen;
     function group(g, title) {
@@ -498,7 +496,7 @@
     return '<aside class="scn' + (busy ? ' busy' : '') + '"><details class="scn-d"' + (open ? ' open' : '') + '><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + all.length + ' done</span></summary>' +
       '<p class="hint">' + (busy ? '🔒 You are in a scenario. The others unlock when it ends.' : 'Pick a scenario, then start. It is ticked automatically when your run matches it.') + '</p>' +
       (tgt ? '<div class="scn-now"><b>Now: ' + EP.esc(tgt.title) + '</b><p>' + EP.esc(tgt.how) + '</p></div>' : '<div class="scn-now"><b>Free path</b><p>No scenario chosen. Pick one below, or walk any path you like.</p></div>') +
-      group('cleber', 'Cleber’s screen') + group('sarah', 'Sarah’s phone') +
+      group('cleber', 'Scenarios for Cleber') +
       '</details></aside>';
   }
   /* true while a scenario is being walked (between Start and the end-of-scenario screen) */
@@ -510,12 +508,12 @@
   }
   function nextTarget() {
     var m = doneMap();
-    var n = EP.scenarios.LIST.filter(function (x) { return !m[x.id]; })[0];
+    var n = EP.scenarios.LIST.filter(function (x) { return x.group === 'cleber' && !m[x.id]; })[0];
     return n ? n.id : null;
   }
 
   function runEndHtml() {
-    var m = doneMap(), total = EP.scenarios.LIST.length, left = total - Object.keys(m).length;
+    var m = doneMap(), total = EP.scenarios.LIST.filter(function (x) { return x.group === 'cleber'; }).length, left = total - Object.keys(m).length;
     var got = ST.matched.map(function (id) { return EP.scenarios.byId(id).title; });
     var tgt = EP.scenarios.byId(ST.target);
     var line = got.length ? 'This run matched: <b>' + EP.esc(got.join('; ')) + '</b>.' : 'This path is not one of the listed scenarios, but your answers are saved.';
@@ -550,11 +548,11 @@
     }).join('') : '<tr><td colspan="3" class="hint">Nothing logged yet. The log fills in as the scenario runs.</td></tr>';
     return '<div class="modal-back"><div class="modal wide logmodal" role="dialog" aria-modal="true">' +
       '<div class="modal-head"><h2>Event log: scenario ' + ST.runId + '</h2><button class="btn ghost" data-action="close-modal">' + esc(EP.t('ui_close')) + '</button></div>' +
-      '<p class="hint">The prototype writes this log from its own scripted logic (EM-03). The facilitator chooses the meal-state events below; nothing is sensed.</p>' +
+      '<p class="hint">The prototype writes this log from its own scripted logic. The facilitator chooses the meal-state events below; nothing is sensed.</p>' +
       '<h3>Facilitator events</h3><div class="row logctrl">' + ctrl + ' ' + sensor + '</div>' +
       (running && !hasKitchen && !away ? '<p class="hint">“Plate leaves the table” is available once Cleber has gone to the kitchen. A sensor outage or plate-away time then shows in Sarah’s visit summary.</p>' : '') +
       '<h3>Log</h3><div class="tablewrap"><table class="logtable"><thead><tr><th>Time</th><th>Event</th><th>What was logged</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-      '<h3>Conformance check (M-04)</h3><p class="hint">' + sm.pass + ' rules pass, ' + sm.fail + ' fail, ' + sm.na + ' not applicable. A scenario passes only if no rule fails.</p>' +
+      '<h3>Conformance check</h3><p class="hint">' + sm.pass + ' rules pass, ' + sm.fail + ' fail, ' + sm.na + ' not applicable. A scenario passes only if no rule fails.</p>' +
       '<ul class="checks">' + checks.map(function (c) {
         return '<li class="chk ' + c.status + '"><span class="chk-s">' + (c.status === 'pass' ? 'Pass' : (c.status === 'fail' ? 'Fail' : 'n/a')) + '</span><span>' + esc(c.rule) + (c.detail ? ' <em>' + esc(c.detail) + '</em>' : '') + '</span></li>';
       }).join('') + '</ul></div></div>';

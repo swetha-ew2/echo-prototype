@@ -351,3 +351,6 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .persona li { margin: .25rem 0; }
 .qset { font-size: .95rem; margin: .9rem 0 .2rem; padding-top: .6rem; border-top: 1px solid var(--line); }
 .qset-one { font-size: .85rem; font-weight: 700; color: var(--muted); margin: .5rem 0 .1rem; }
+.sarah-scn { margin: 0 0 .8rem; }
+.sarah-scn .scn-item { cursor: default; display: block; }
+.scn-how { display: block; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
