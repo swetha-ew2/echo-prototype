@@ -1,12 +1,42 @@
-/* Cognitive walkthrough form (EM-04): four questions per step with justification,
-   success/failure stories, design suggestions, plus the CL3 follow-up questions. */
+/* Cognitive walkthrough form (EM-04, ER-01): Yes/No questions specific to each step, with a justification,
+   plus the hosts' success/failure stories and design suggestions, and the CL3 follow-up questions. */
 (function () {
-  var Q = [
-    ['a', 'Will the user try to achieve the right effect?'],
-    ['b', 'Will the user notice that the correct action is available?'],
-    ['c', 'Will the user associate the correct action with the effect they are trying to achieve?'],
-    ['d', 'If the correct action is performed, will the user see that progress is being made?']
-  ];
+  /* The walkthrough questions are specific to the step. Each set is shown only where it applies, so an evaluator
+     answers the questions that fit what Echo just did (Yes/No, required, with a short reason). */
+  var SETS = {
+    init: { title: 'Step 2 · Initial reminder', qs: [
+      ['in1', 'Does the reminder encourage Cleber to consider lunch without sounding demanding?'],
+      ['in2', 'Would Cleber notice and understand the reminder in the described situation?'],
+      ['in3', 'Is the next action clear while leaving him free to choose?']] },
+    postpone: { title: 'Step 4 · Postponement', qs: [
+      ['pp1', 'Does Echo accept the postponement without making it feel like a mistake?'],
+      ['pp2', 'Is it clear what happens next?'],
+      ['pp3', 'Does Cleber retain a meaningful sense of choice?']] },
+    kitchen: { title: 'Step 4 · Entering the kitchen', qs: [
+      ['ki1', 'Does Echo’s quiet behaviour let Cleber continue independently?'],
+      ['ki2', 'Can Cleber eat without being required to say “I’m done”?']] },
+    repeat: { title: 'Step 4 · Repeated reminder', qs: [
+      ['rp1', 'Is it clear that the reminder concerns the same planned meal?'],
+      ['rp2', 'Does the reminder still feel like an invitation rather than pressure?'],
+      ['rp3', 'Is its purpose understandable?']] },
+    final: { title: 'Step 5 · Third and final reminder', qs: [
+      ['fi1', 'Is it clear this is the final reminder in the current sequence?'],
+      ['fi2', 'Does Cleber still have a meaningful choice about responding?']] },
+    end_ok: { title: 'Step 7 · Ending: eating is confirmed', qs: [
+      ['en1', 'Is it clear that the interaction has ended and reminders will stop?']] },
+    end_open: { title: 'Step 7 · Ending: eating is not confirmed', qs: [
+      ['en2', 'Is it clear that the sequence has ended for now?']] },
+    // Sarah's path (UC01 steps 6 and 7); worded for the persona in HP-01
+    alert: { title: 'Step 6 · Unresolved-meal alert', qs: [
+      ['sa1', 'Does the alert tell Sarah which meal is unresolved and why (refusal, no response or not confirmed)?'],
+      ['sa2', 'Is it clear what she can do next (call, visit or wait), while she stays free to choose?'],
+      ['sa3', 'Does it read as a situation worth an alert, not as an alarm for a delayed meal?']] },
+    resolved: { title: 'Step 7 · “Resolved” update', qs: [
+      ['sr1', 'Is it clear that the meal is now resolved and that she needs to do nothing more?'],
+      ['sr2', 'Does the update stay calm: information, not another alarm?']] }
+  };
+  var LEGACY = [['a', 'Will the user try to achieve the right effect?'], ['b', 'Will the user notice that the correct action is available?'],
+    ['c', 'Will the user associate the correct action with the effect they are trying to achieve?'], ['d', 'If the correct action is performed, will the user see that progress is being made?']];
 
   var FOLLOWUP = [
     ['q1', 'Was there a moment when a reminder felt like too much, or pushy? Which one?'],
@@ -14,8 +44,35 @@
     ['q3', 'Would you want Echo to stay quiet at any point? When?']
   ];
 
+  /* Persona cards for the evaluator, taken from the design documents (ST-01, SA-01, PS-01; HP-01, ST-03). */
+  EP.personas = {
+    cleber: function (open) {
+      return '<details class="persona"' + (open ? ' open' : '') + '><summary><b>Your persona: Cleber</b></summary>' +
+        '<p class="hint">There is no full human persona for Cleber yet. This is from the stakeholder description (ST-01), his meal routine (SA-01) and the problem scenario (PS-01). It rests on proxy evidence from his grandson Gilbert and is provisional.</p>' +
+        '<ul>' +
+        '<li><b>Lives alone</b> in an apartment. Sarah, his caregiver, comes every two to three days and leaves prepared meals ready.</li>' +
+        '<li><b>Meals:</b> three planned meals a day, 30 minutes to an hour each. He gets up, walks to the kitchen, heats the meal in the microwave and eats.</li>' +
+        '<li><b>Today:</b> it is 12:30, his planned lunch. The meal is ready and he has not been near the kitchen.</li>' +
+        '<li><b>What goes wrong:</b> he is in another room than his alarm or notes 2 to 3 times a week, and falls asleep and does not hear the alarm 2 to 3 times a week. He may also not feel hungry, not like the food or not feel like eating.</li>' +
+        '<li><b>Values:</b> security and independence matter most to him; his health matters too. He should not feel controlled or watched.</li>' +
+        '<li><b>People:</b> grandfather of Gilbert (lives in another city); Hanz gives him routine health checks.</li></ul>' +
+        '<p class="hint"><b>You decide</b> what Cleber does at each reminder. Choose what you think he would do, not what is easiest to test.</p></details>';
+    },
+    sarah: function (open) {
+      return '<details class="persona"' + (open ? ' open' : '') + '><summary><b>Your persona: Sarah</b></summary>' +
+        '<p class="hint">From HP-01 and ST-03 (direct observation, provisional).</p>' +
+        '<ul>' +
+        '<li><b>Role:</b> Cleber’s caregiver. She receives the alerts and summaries and decides how to follow up. Cleber, not Sarah, hears the meal reminders.</li>' +
+        '<li><b>Availability:</b> mobile and can travel to his home, but she also cares for other clients. She is not on standby and cannot always respond at once.</li>' +
+        '<li><b>History:</b> on more than one visit she found meals partly eaten or untouched. She wants to know what happens between visits, not to find out only when it has become a pattern.</li>' +
+        '<li><b>She wants</b> alerts only for genuinely concerning situations, not for every delayed meal. Non-urgent patterns can wait for a visit or a summary.</li>' +
+        '<li><b>She worries</b> about making Cleber feel watched, which could damage trust. She wants him to be more autonomous and less dependent on her services.</li>' +
+        '<li><b>Skills:</b> she can interpret system information and decide between a call, a visit or attention at her next stop.</li></ul></details>';
+    }
+  };
+
   EP.wt = {
-    QUESTIONS: Q,
+    SETS: SETS,
     FOLLOWUP: FOLLOWUP,
     ctx: null,   // { notes, followup, save() } of the view that is currently on screen
 
@@ -53,43 +110,71 @@
     ensure: function (notes, id) {
       if (!notes[id]) {
         var m = EP.wt.meta(id);
-        notes[id] = { id: id, step: m.step, title: m.title, persona: m.persona, q: { a: {}, b: {}, c: {}, d: {} }, success: '', failure: '', suggestion: '', other: '', after: '' };
+        notes[id] = { id: id, step: m.step, title: m.title, persona: m.persona, q: {}, sets: [], success: '', failure: '', suggestion: '', other: '', after: '' };
       }
       return notes[id];
     },
 
-    answered: function (entry) {
-      return !!entry && ['a', 'b', 'c', 'd'].every(function (k) { return entry.q[k] && entry.q[k].ans; });
+    /* The questions of an entry, in the order its sets were shown (entries from older sessions use the four baseline questions). */
+    questionsOf: function (entry) {
+      if (!entry) return [];
+      if (!entry.sets || !entry.sets.length) return LEGACY;
+      var out = [];
+      entry.sets.forEach(function (id) { if (SETS[id]) out = out.concat(SETS[id].qs); });
+      return out;
     },
 
-    /* options.after: label for the optional "what happened next" note (shown once the action was taken). */
+    /* Every question that applies to the step so far has a Yes or No. */
+    answered: function (entry) {
+      var qs = EP.wt.questionsOf(entry);
+      return !!entry && qs.length > 0 && qs.every(function (q) { return entry.q[q[0]] && entry.q[q[0]].ans; });
+    },
+
+    countYes: function (entry) {
+      var qs = EP.wt.questionsOf(entry);
+      return { yes: qs.filter(function (q) { return entry.q[q[0]] && entry.q[q[0]].ans === 'yes'; }).length, total: qs.length };
+    },
+
+    /* options.set: the question set that applies on this screen (it is added to the step and stays for the step).
+       options.after: label for the optional "what happened next" note. */
     formHtml: function (notes, id, options) {
       options = options || {};
       var e = EP.wt.ensure(notes, id), m = EP.wt.meta(id), esc = EP.esc;
+      if (options.set && SETS[options.set] && e.sets.indexOf(options.set) < 0) e.sets.push(options.set);
+      var multi = e.sets.length > 1;
       var h = '<section class="wt" data-card="' + id + '">' +
         '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
-        '<p class="hint">Answer as ' + esc(m.persona) + '. The four Yes/No questions are <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p><ol class="qs">';
-      Q.forEach(function (q) {
-        var k = q[0], a = e.q[k] || {};
-        h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q"><b>' + k + '.</b> ' + esc(q[1]) + ' <span class="req" aria-hidden="true">*</span></p>' +
-          '<div class="yn" role="radiogroup" aria-required="true" aria-label="Question ' + k + ' (required)">' +
-          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
-          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
-          '<textarea rows="2" placeholder="' + (a.ans === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.') + '" aria-label="Justification for question ' + k + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
+        '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>';
+      var groups = e.sets.length ? e.sets.map(function (sid) { return { title: SETS[sid] && SETS[sid].title, qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
+      groups.forEach(function (g) {
+        if (multi && g.title) h += '<h3 class="qset">' + esc(g.title) + '</h3>';
+        else if (g.title) h += '<p class="qset-one">' + esc(g.title) + '</p>';
+        h += '<ol class="qs">';
+        g.qs.forEach(function (q) {
+          var k = q[0], a = e.q[k] || {};
+          h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q">' + esc(q[1]) + ' <span class="req" aria-hidden="true">*</span></p>' +
+            '<div class="yn" role="radiogroup" aria-required="true" aria-label="' + esc(q[1]) + ' (required)">' +
+            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
+            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
+            '<textarea rows="2" placeholder="' + (a.ans === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.') + '" aria-label="Justification: ' + esc(q[1]) + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
+        });
+        h += '</ol>';
       });
-      h += '</ol>';
       if (options.after) {
         h += '<label class="field"><span>' + esc(options.after) + '</span><textarea rows="2" data-card="' + id + '" data-path="after">' + esc(e.after) + '</textarea></label>';
       }
-      h += '<div class="more"><h3>Success story, failure story, suggestions</h3>' +
-        '<label class="field"><span>Success story (why it works)</span><textarea rows="2" data-card="' + id + '" data-path="success">' + esc(e.success) + '</textarea></label>' +
-        '<label class="field"><span>Failure story (why it might fail)</span><textarea rows="2" data-card="' + id + '" data-path="failure">' + esc(e.failure) + '</textarea></label>' +
-        '<label class="field"><span>Design suggestion</span><textarea rows="2" data-card="' + id + '" data-path="suggestion">' + esc(e.suggestion) + '</textarea></label>' +
-        '<label class="field"><span>Any problem outside the sequence</span><textarea rows="2" data-card="' + id + '" data-path="other">' + esc(e.other) + '</textarea></label>' +
-        '</div></section>';
+      h += '</section>';
       return h;
+    },
+
+    /* The hosts' own fields for a step (success and failure stories, suggestions, other problems). */
+    hostFieldsHtml: function (notes, id) {
+      var e = EP.wt.ensure(notes, id), esc = EP.esc;
+      function f(label, path, val) { return '<label class="field"><span>' + label + '</span><textarea rows="3" data-card="' + id + '" data-path="' + path + '">' + esc(val) + '</textarea></label>'; }
+      return f('Success story (why it works)', 'success', e.success) + f('Failure story (why it might fail)', 'failure', e.failure) +
+        f('Design suggestion', 'suggestion', e.suggestion) + f('Any problem outside the sequence', 'other', e.other);
     },
 
     followupHtml: function (followup) {
@@ -124,7 +209,11 @@
         if (ctx.onChange) ctx.onChange(card);
         return true;
       }
-      document.addEventListener('input', function (ev) { if (ev.target.matches('textarea[data-path]')) handle(ev.target); });
+      document.addEventListener('input', function (ev) {
+        var t = ev.target;
+        if (t.matches('textarea[data-oq]')) { if (EP.wt.ctx && EP.wt.ctx.setOpen) EP.wt.ctx.setOpen(t.getAttribute('data-oq'), t.getAttribute('data-item'), t.value, t.getAttribute('data-run')); return; }
+        if (t.matches('textarea[data-path]')) handle(t);
+      });
       document.addEventListener('change', function (ev) {
         var t = ev.target;
         if (!t.matches('input[type=radio][data-path]')) return;
@@ -139,8 +228,8 @@
     },
 
     /* Plain data for download / printing. */
-    exportData: function (meta, cleber, sarah) {
-      return { exportedAt: new Date().toISOString(), prototype: 'Echo meal check-in prototype (AT-01, build B1 web version v1)', session: meta, cleberPath: cleber, sarahPath: sarah };
+    exportData: function (meta, cleber, sarah, extra) {
+      return Object.assign({ exportedAt: new Date().toISOString(), prototype: 'Echo meal check-in prototype (AT-01, build B1 web version v1)', session: meta, cleberPath: cleber, sarahPath: sarah }, extra || {});
     },
 
     download: function (data, name) {
@@ -160,12 +249,24 @@
           var sc = (r.scenarios || []).map(function (id) { return (EP.scenarios.byId(id) || {}).title; }).filter(Boolean).join('; ');
           var head = '<h3 class="run-h">Scenario run ' + esc(r.run != null ? r.run : (r.runId != null ? r.runId : '?')) + (sc ? ': ' + esc(sc) : '') + '</h3>' +
             (r.outcome ? '<p class="hint">Result: ' + esc(r.outcome) + '</p>' : '');
+          var extra = '';
+          if (r.log && r.log.length) {
+            extra += '<details class="pn-log"><summary>Event log (' + r.log.length + ' entries)</summary><table class="logtable"><tbody>' + r.log.map(function (e) {
+              return '<tr><td class="tm">' + esc(e.time) + '</td><td class="tp">' + esc((EP.log.LABEL || {})[e.type] || e.type) + '</td><td>' + esc(e.text) + '</td></tr>';
+            }).join('') + '</tbody></table></details>';
+          }
+          if (r.checks && r.checks.length) {
+            var cs = r.checksSummary || {};
+            extra += '<p class="hint"><b>Conformance (M-04):</b> ' + esc(cs.pass) + ' pass, ' + esc(cs.fail) + ' fail, ' + esc(cs.na) + ' n/a. ' + (cs.fail ? 'Scenario FAILS.' : 'Scenario passes.') + '</p>' +
+              (cs.fail ? '<ul>' + r.checks.filter(function (c) { return c.status === 'fail'; }).map(function (c) { return '<li>' + esc(c.rule) + ': ' + esc(c.detail) + '</li>'; }).join('') + '</ul>' : '');
+          }
+          head += extra;
           if (!ids.length) return head + '<p class="hint">No notes recorded.</p>';
           return head + ids.map(function (id) {
             var e = r.notes[id], h = '<article class="pn"><h3>' + esc(e.step) + ': ' + esc(e.title) + '</h3><table>';
-            Q.forEach(function (q) {
+            EP.wt.questionsOf(e).forEach(function (q) {
               var a = (e.q && e.q[q[0]]) || {};
-              h += '<tr><td class="k">' + q[0] + '. ' + esc(q[1]) + '</td><td class="v"><b>' + esc((a.ans || '–').toUpperCase()) + '</b> ' + esc(a.why || '') + '</td></tr>';
+              h += '<tr><td class="k">' + esc(q[1]) + '</td><td class="v"><b>' + esc((a.ans || '–').toUpperCase()) + '</b> ' + esc(a.why || '') + '</td></tr>';
             });
             [['After the action', e.after], ['Success story', e.success], ['Failure story', e.failure], ['Design suggestion', e.suggestion], ['Other problem', e.other]].forEach(function (x) {
               if (x[1]) h += '<tr><td class="k">' + x[0] + '</td><td class="v">' + esc(x[1]) + '</td></tr>';
@@ -181,9 +282,21 @@
           return '<tr><td class="k">' + esc(q[1]) + '</td><td class="v">' + esc(f.text || '–') + '</td></tr>';
         }).join('') + '</table>';
       }
+      var qn = '';
+      var oq = data.sarahOpenQuestions;
+      if (oq) {
+        function qa(items, vals) {
+          return '<table>' + items.map(function (it) { return '<tr><td class="k">' + esc(it[1]) + '</td><td class="v">' + esc((vals || {})[it[0]] || '–') + '</td></tr>'; }).join('') + '</table>';
+        }
+        qn = '<h2>Sarah: open questions</h2>';
+        Object.keys(oq.A || {}).forEach(function (r) {
+          qn += '<h3 class="run-h">After the alert, scenario ' + esc(r) + '</h3>' + (oq.A[r].truth ? '<p class="hint">Actual reason: ' + esc(oq.A[r].truth) + '</p>' : '') + qa(EP.oq.A, oq.A[r]);
+        });
+        qn += '<h3 class="run-h">After the visit summary</h3>' + qa(EP.oq.B, oq.B);
+      }
       return '<h1>Walkthrough notes: Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
         '<h2>Path A: Cleber</h2>' + cards(data.cleberPath) + fu +
-        '<h2>Path B: Sarah</h2>' + cards(data.sarahPath);
+        '<h2>Path B: Sarah</h2>' + cards(data.sarahPath) + qn;
     }
   };
 })();

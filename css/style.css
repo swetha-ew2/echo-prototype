@@ -308,3 +308,46 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .fu-n { flex: none; width: 1.7rem; height: 1.7rem; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: inline-flex; align-items: center; justify-content: center; font-size: .9rem; }
 .fu-list textarea { display: block; font-size: 1rem; }
 .final .choices { margin-top: 1rem; }
+
+/* event log drawer */
+.logmodal { max-height: 90vh; overflow: auto; }
+.logctrl { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.inline { display: inline-flex; align-items: center; gap: .4rem; }
+.inline select { width: auto; }
+.tablewrap { overflow-x: auto; }
+.logtable { width: 100%; border-collapse: collapse; font-size: .88rem; }
+.logtable th, .logtable td { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.logtable .tm { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.logtable .tp { white-space: nowrap; font-weight: 600; }
+.checks { list-style: none; padding: 0; margin: .4rem 0; display: grid; gap: .3rem; font-size: .9rem; }
+.chk { display: flex; gap: .6rem; align-items: baseline; }
+.chk-s { flex: none; min-width: 3.2rem; text-align: center; border-radius: 6px; padding: .05rem .4rem; font-size: .75rem; font-weight: 700; border: 1px solid var(--line); }
+.chk.pass .chk-s { background: var(--ok); border-color: var(--ok); color: var(--accent-ink); }
+.chk.fail .chk-s { background: var(--bad); border-color: var(--bad); color: var(--accent-ink); }
+.chk em { color: var(--muted); font-style: normal; display: block; font-size: .85rem; }
+.pn-log summary { cursor: pointer; font-weight: 600; margin: .4rem 0; }
+
+.fu-h { font-size: 1.1rem; margin: 1.4rem 0 .3rem; }
+
+/* visit summary on Sarah's phone */
+.vs-wrap { padding: .6rem .7rem; font-size: .9rem; }
+.vs-wrap h3 { margin: .3rem 0; }
+.vs h4 { margin: .8rem 0 .3rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.vs-item { border: 1px solid var(--line); border-radius: 10px; padding: .5rem .6rem; margin-bottom: .4rem; background: var(--surface); }
+.vs-item.attn { border-left: 5px solid var(--bad); }
+.vs-item p { margin: .2rem 0 0; }
+.vs-h { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
+.vs-tag { font-size: .72rem; font-weight: 700; border: 1px solid var(--line); border-radius: 6px; padding: 0 .4rem; white-space: nowrap; }
+.vs-open { margin: .6rem .7rem; }
+
+.vs-wrap { color: #fff; }
+.vs-wrap .hint, .vs-wrap h4 { color: rgba(255,255,255,.8); }
+.vs-item { color: var(--ink); }
+.vs-item .vs-tag { color: var(--ink); }
+
+.persona { border: 1px solid var(--line); border-radius: 10px; padding: .5rem .8rem; margin: 0 0 .8rem; background: var(--bg); }
+.persona summary { cursor: pointer; }
+.persona ul { margin: .4rem 0; padding-left: 1.1rem; }
+.persona li { margin: .25rem 0; }
+.qset { font-size: .95rem; margin: .9rem 0 .2rem; padding-top: .6rem; border-top: 1px solid var(--line); }
+.qset-one { font-size: .85rem; font-weight: 700; color: var(--muted); margin: .5rem 0 .1rem; }

@@ -11,22 +11,30 @@ A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of 
 | Host briefing | – | Objective, scenario, both personas, the action sequence and what is walked. Hosts read it aloud. |
 | **Path A: Cleber** (Echo in the kitchen) | 2, 4, 5, 7 | Three reminders; choices *go to the kitchen*, *say "not now"*, *do nothing*; one postponement (at reminder 1 or 2) restarts the sequence, a second does not, and there is no "not now" at reminder 3; eating confirmed by "I'm done" or by Echo noticing; Echo stops and rests. |
 | **Path B: Sarah** (phone view) | 6, 7 | Unresolved-meal alert (refusal, non-response or uncertain), *Call Cleber* / *I'll visit*, repeat after no response, Gilbert notified, "resolved" update. |
-| Walkthrough form | all | The four questions (a to d) are answered **at every step**, next to the step (EM-04, ER-01). Yes/No is **required**: the button that leaves a step stays disabled until a to d are answered; a short reason box opens after each tap. The success story, failure story, suggestion and "other problem" fields are always visible (not folded away). There is no "answer at the end" mode. |
+| Walkthrough form | all | Each step has its **own Yes/No questions** (two or three, only those that apply: initial reminder, postponement, entering the kitchen, repeated reminder, final reminder, ending confirmed / not confirmed; for Sarah, the alert and the "resolved" update), answered next to the step (EM-04, ER-01). Yes/No is **required**: the button that leaves a step stays disabled until every question shown for that step is answered; a short reason box opens after each tap. The success story, failure story, suggestion and "other problem" fields are always visible (not folded away). There is no "answer at the end" mode. |
 | CL3 follow-up | – | The three open questions for UC01-F2-CL3 after the walkthrough. |
 | Notes export | – | Printable page (save as PDF) and a `.json` download, including Sarah's notes when a phone was connected. |
 
-Not in it (as in AT-01): steps 1, 3, 8, 9 (detection, camera logic, plate-away log, visit summary), real timing and sensing, rooms, and claims CL1, CL2, CL4, CL5.
+Not in it (as in AT-01): real timing and sensing, rooms, and claims CL1, CL2. **Added beyond AT-01 B1 (a B2-style step, so AT-01 should be updated if you keep it):** a simulated event log with a conformance check (steps 8, 9 and EM-03/M-04), a mock visit summary for Sarah (F4, CL5 Part B), and open-ended questions for Sarah after the alert and the summary (CL4, CL5), next to the CL3 questions for Cleber. Everything is still simulated: the facilitator chooses the events, and nothing is sensed.
 
 ## Scenarios, runs and your data
 
 Cleber's path has **108 distinct paths** (three reminders; at each one Cleber can eat, go to the kitchen and leave, do nothing or say "not now"; "not now" is only possible at reminders 1 and 2, and the first one restarts the sequence, so Echo gives at most **5 reminders**; 154 if "I'm done" and eating silently are counted apart). They are grouped into **16 scenarios** in the **Scenarios panel** on the left: 12 for Cleber's screen (eats at once, misses one or two reminders, never responds, kitchen but no eating, "not now" then eats / misses a reminder / never responds / says it twice / goes to the kitchen without eating, and so on) and 4 for Sarah's phone (call, visit, no response then Gilbert, "resolved" update).
 
 - **One scenario at a time:** while a scenario is running the others are greyed out and cannot be picked or ticked; they unlock on the end-of-scenario screen.
-- **Questions open when the step is finished:** the right-hand panel shows three stages (Cleber acts, Answer the questions, Continue). It stays greyed and locked until Cleber's response is complete, then opens with a green prompt.
+- **Questions are always open:** the right-hand panel shows three stages (Echo speaks, Answer the questions, Continue). On the steps where Cleber acts, the evaluator can listen, answer, then choose what Cleber does, in either order. Only the Continue button waits for the Yes/No answers. A collapsible persona card (Cleber, or Sarah on the phone) sits at the top of the panel; Cleber's is also open on the briefing.
 - Click a scenario to make it the target: the panel shows what to do. Click it again for a free path.
 - A Cleber scenario is **ticked automatically** when the run matches it. Sarah's scenarios are ticked when her phone reports them; the tick box can also be set by hand (for example when Sarah's view runs alone).
 - When a scenario ends, the evaluator is asked: **do another scenario, or end** (end leads to the CL3 follow-up questions). Each run keeps its own notes; the print page and the `.json` list every run in order.
 - **Nothing is overwritten.** Finished runs are archived, never reset; Sarah's phone archives its notes whenever Cleber moves to the next scenario. Starting a new session, or *Start over*, asks first, and leaves a safety copy in the browser (`localStorage` keys starting `echo.backup.`).
+
+## Event log, summary and open questions
+
+- **Host notes** (header button): the success story, failure story, design suggestion and "other problem" fields. They are for the hosts, so they are no longer in the evaluator's question panel. They are kept per step and appear in the print page and `.json`.
+- **Event log** (header button): every scenario writes a timestamped log (trigger, each reminder, response, postponement, kitchen entry, camera on/off, eating state, escalation and its recipient, Sarah's response, the "resolved" update, closure). In the same window the facilitator can add **meal-state events** as in EM-03: *plate leaves the table* (then returns after N minutes, or never returns) and *kitchen sensor reported offline*. While the plate is away Echo sends no reminder (the next one is withheld until the plate returns); a plate that never returns is logged as not returned and sends no alert.
+- **Conformance check (M-04):** 13 rules checked on the log (reminder order and count, one postponement, no prompt after closure, camera off until kitchen activity, escalation recipient and stated reason, repeat once then Gilbert, no reminder while the plate is away, plate-away time and the over-one-hour flag, missing data shown, closure). A scenario passes only if no rule fails. This verifies the prototype's scripted logic only (EM-03 limitation).
+- **Visit summary** (Sarah's phone, "Open visit summary"): built from the finished scenarios' logs. Items needing attention come first; plate-away over one hour and sensor gaps are called out; missing data is shown as a gap. When Sarah's view runs alone it shows a small sample.
+- **Open questions, no scores** (this is a formative cycle, so there are no Likert items): Cleber answers the three CL3 follow-up questions on the last screen (the open question of M-03). Sarah has an *Open questions* tab: after the alert (what it told her, what she would do and why, what was unclear) and after the visit summary (which meals were eaten, whether timing, plate-away times and missing data were understandable). The real reason for the alert is stored beside her answer so the hosts can compare. M-03's and M-05's Likert items are not used.
 
 ## Two screens, one session
 
@@ -76,6 +84,7 @@ Opening `index.html` directly also works for Cleber's path, but the QR link only
 ## Files
 
 - `index.html`, `css/style.css`
+- `js/log.js` event log, conformance check, visit summary and questionnaires
 - `js/scenarios.js` the 16 scenarios and how a run is matched to them
 - `js/i18n.js` texts and translations · `js/settings.js` · `js/scene.js` kitchen, Echo and audio playback · `js/sync.js` pairing · `js/walkthrough.js` form and export · `js/cleber.js` · `js/sarah.js` · `js/app.js` routing
 - `img/` the robot picture · `audio/` Echo's voice lines · `tools/` voice generation script and voice samples
