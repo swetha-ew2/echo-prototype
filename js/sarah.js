@@ -7,7 +7,7 @@
   var snap = { phase: 'none' };
   var standalone = false;
 
-  function fresh() { return { code: null, localMode: 'end', review: false, card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
+  function fresh() { return { code: null, runId: null, runs: [], card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, events: [] }; }
   function save() { EP.store.set(KEY, SS); }
 
   function sendEvent(kind) {
@@ -18,7 +18,16 @@
   var notesTimer = null;
   function sendNotes() {
     clearTimeout(notesTimer);
-    notesTimer = setTimeout(function () { EP.sync.send({ type: 'sarahNotes', notes: SS.notes }); }, 400);
+    notesTimer = setTimeout(function () { EP.sync.send({ type: 'sarahNotes', notes: SS.notes, runs: SS.runs, runId: SS.runId }); }, 400);
+  }
+
+  function hasNotes(x) { return Object.keys((x && x.notes) || {}).length > 0; }
+  /* Start a clean page for a new scenario; the notes of the previous one are kept in SS.runs, never dropped. */
+  function newRun(runId) {
+    var old = SS, runs = (old.runs || []).slice();
+    if (hasNotes(old)) runs.push({ runId: old.runId, notes: old.notes });
+    SS = fresh(); SS.code = code; SS.runs = runs; SS.runId = runId; SS.events = old.events || [];
+    sendNotes();
   }
 
   function onMsg(msg) {
@@ -26,7 +35,8 @@
     if (JSON.stringify(msg) === JSON.stringify(snap)) return;
     var prevPhase = snap.phase;
     snap = msg;
-    if (msg.phase === 'none' && prevPhase !== 'none') { SS = fresh(); SS.code = code; }   // Cleber's side restarted
+    if (msg.runId && msg.runId !== SS.runId) newRun(msg.runId);   // Cleber moved on to another scenario
+    else if (msg.phase === 'none' && prevPhase !== 'none' && hasNotes(SS)) newRun(SS.runId);   // Cleber's side restarted
     if (msg.phase === 'alert' && !SS.seenAlert) { SS.seenAlert = true; tab = 'phone'; }
     if (msg.phase === 'resolved' && !SS.seenResolved) { SS.seenResolved = true; }
     save(); view();
@@ -49,7 +59,6 @@
   }
 
   function t(k, v) { return EP.t(k, v); }
-  function endMode() { return (standalone ? SS.localMode : snap.mode) === 'end'; }
 
   function alertCard(repeat) {
     var out = snap.outcome === 'notnow' ? 's_out_notnow' : (snap.outcome === 'kitchen' ? 's_out_kitchen' : 's_out_none');
@@ -99,7 +108,7 @@
       h += '<p class="hint">Sarah has responded.</p>';
     }
     if (standalone) {
-      h += '<hr><div class="seg" role="radiogroup"><button type="button" class="' + (SS.localMode === 'end' ? 'on' : '') + '" data-action="s-mode" data-val="end">Questions at the end</button><button type="button" class="' + (SS.localMode !== 'end' ? 'on' : '') + '" data-action="s-mode" data-val="step">After each step</button></div>' +
+      h += '<hr>' +
         '<label class="field"><span>Scenario outcome</span><select id="s-outcome"><option value="none">Cleber did not respond (non-response)</option><option value="notnow">Cleber said “not now” (refusal)</option><option value="kitchen">Went to the kitchen, eating not confirmed (uncertain)</option></select></label>' +
         '<div class="row"><button class="btn primary" data-action="s-send">Send unresolved-meal alert</button>' +
         '<button class="btn" data-action="s-resolve"' + (snap.phase === 'alert' ? '' : ' disabled') + '>Cleber eats later → “resolved”</button>' +
@@ -110,7 +119,6 @@
 
   function panel() {
     var showAlert = snap.phase === 'alert' || snap.phase === 'resolved';
-    if (endMode()) return '';
     if (!showAlert) return '<aside class="panel"><section class="wt"><h2>Walkthrough questions</h2><p class="hint">They appear when Sarah’s phone receives something. ' +
       (standalone ? 'Open the simulation controls below the phone to send the first alert.' : 'Wait for Cleber’s evaluator to reach the end of the reminders.') + '</p></section></aside>';
     var id = snap.phase === 'resolved' ? 'S7' : 'S6', h = '<aside class="panel">';
@@ -122,28 +130,13 @@
     return h + '</aside>';
   }
 
-  function reviewHtml() {
-    var ids = ['S6'].concat(snap.phase === 'resolved' ? ['S7'] : []);
-    return '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">For each step you saw, answer as Sarah.</p><div class="review">' +
-      ids.map(function (id, i) {
-        var m = EP.wt.meta(id);
-        return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' +
-          EP.wt.formHtml(SS.notes, id, id === 'S6' ? { after: 'After Sarah’s action (or after the repeat): was it clear what happens next?' } : {}) + '</details>';
-      }).join('') + '</div><div class="choices row"><button class="btn" data-action="s-back">Back to the phone</button></div></div>';
-  }
-
   function view() {
     EP.wt.ctx = { notes: SS.notes, followup: {}, save: function () { save(); sendNotes(); } };
     var hasForm = snap.phase === 'alert' || snap.phase === 'resolved';
-    var end = endMode();
-    if (end && SS.review) {
-      el.innerHTML = header() + '<div class="layout single">' + reviewHtml() + '</div>';
-      return;
-    }
     el.innerHTML = header() +
-      (end ? '' : '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
-      '<div class="layout sarah' + (end ? ' single' : '') + ' tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
-      (end && hasForm ? '<button class="btn primary" data-action="s-review">Answer the questions</button>' : '') + '</div>' + panel() + '</div>' +
+      ('<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
+      '<div class="layout sarah tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
+      '</div>' + panel() + '</div>' +
       '<p class="sim-note">Simulation: nothing is sent to a real phone.</p>';
   }
 
@@ -161,23 +154,25 @@
     's-card': function (t) { SS.card = t.getAttribute('data-card'); view(); },
     's-send': function () {
       var sel = document.getElementById('s-outcome');
-      SS = Object.assign(fresh(), { notes: SS.notes, seenAlert: true, localMode: SS.localMode, code: code });
+      var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []);
+      SS = Object.assign(fresh(), { runs: runs, runId: runs.length + 1, seenAlert: true, code: code });
       sendLocalSnapshot(sel ? sel.value : 'none'); save(); view();
     },
     's-resolve': function () {
       snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; save(); view();
     },
-    's-reset': function () { var m = SS.localMode; SS = fresh(); SS.localMode = m; SS.code = code; snap = { phase: 'none' }; save(); view(); },
-    's-review': function () { SS.review = true; save(); view(); },
-    's-back': function () { SS.review = false; save(); view(); },
-    's-mode': function (t) { SS.localMode = t.getAttribute('data-val'); save(); view(); }
+    's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); SS = fresh(); SS.runs = runs; SS.code = code; snap = { phase: 'none' }; save(); view(); }
   };
 
   EP.sarah = {
     mount: function (container, sessionCode) {
       el = container; code = sessionCode || null; standalone = !code;
       SS = EP.store.get(KEY, null) || fresh();
-      if (SS.code !== code) { SS = fresh(); SS.code = code; save(); }   // a different session starts clean
+      if (SS.code !== code) {   // a different session starts clean, but earlier notes are kept
+        var old = SS; SS = fresh(); SS.code = code;
+        SS.runs = (old.runs || []).concat(hasNotes(old) ? [{ runId: old.runId, notes: old.notes }] : []);
+        save();
+      }
       snap = { phase: 'none' }; connected = false; status = 'init'; tab = 'phone';
       if (!standalone) EP.sync.open('guest', code, onMsg, onStatus);
       view();
@@ -188,6 +183,6 @@
       if (actions[action]) { actions[action](target); return true; }
       return false;
     },
-    exportData: function () { return { notes: SS ? SS.notes : {}, events: SS ? SS.events : [] }; }
+    exportData: function () { return { runs: SS ? (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []) : [], events: SS ? SS.events : [] }; }
   };
 })();

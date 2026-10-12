@@ -4,18 +4,36 @@
    NOTE: the DE and PT texts are quick translations and should be checked by a native speaker. */
 window.EP = window.EP || {};
 
-EP.LANGS = { en: 'English', de: 'Deutsch', pt: 'Português' };
-EP.SPEECH_LANG = { en: 'en-US', de: 'de-DE', pt: 'pt-BR' };
+EP.LANGS = { en: 'English', de: 'Deutsch' };
+EP.SPEECH_LANG = { en: 'en-GB', de: 'de-DE' };
 
 EP.I18N = {
   en: {
     // Echo's spoken lines (placeholder wording; r1 and r2 follow DS-01)
     r1: 'Cleber, have you had lunch yet? Come warm up your plate when you are ready.',
+    r1_2: 'Hello Cleber, it is lunchtime whenever you feel ready. Your plate is waiting to be warmed up.',
+    r1_3: 'Cleber, how about some lunch? You can warm up your plate whenever it suits you.',
+    r1_4: 'Hi Cleber, I just wanted to check in: have you had your lunch? Your plate is ready to warm up.',
     r2: 'Cleber, your lunch is in the fridge whenever you would like it.',
+    r2_2: 'Cleber, just a gentle note: your lunch is in the fridge, ready when you are.',
+    r2_3: 'Hello again, Cleber. Your lunch is waiting in the fridge for whenever you would like it.',
+    r2_4: 'Cleber, there is no rush, but your lunch is in the fridge if you feel like eating.',
     r3: 'Cleber, one last reminder: your lunch is ready for you.',
+    r3_2: 'Cleber, this is my last reminder for now: your lunch is ready whenever you are.',
+    r3_3: 'One more gentle reminder, Cleber, and then I will leave you in peace: your lunch is ready.',
+    r3_4: 'Cleber, a final note from me: your lunch is ready and waiting for you.',
     ack1: "That's alright, Cleber. I'll check in again a little later.",
+    ack1_2: "No problem, Cleber. I'll come back to you a little later.",
+    ack1_3: "Of course, Cleber. I'll check in again in a while.",
+    ack1_4: "That's fine, Cleber. I'll remind you again later.",
     ack2: "That's alright, Cleber. Thank you for telling me.",
+    ack2_2: 'Understood, Cleber. Thank you for letting me know.',
+    ack2_3: 'No problem, Cleber. I appreciate you telling me.',
+    ack2_4: 'Okay, Cleber. Thanks for letting me know.',
     done: 'Thank you, Cleber. Enjoy the rest of your day.',
+    done_2: 'Wonderful, Cleber. I hope you enjoyed your lunch.',
+    done_3: 'Thank you for letting me know, Cleber. Have a lovely afternoon.',
+    done_4: 'Great, Cleber. Take care, and enjoy the rest of your day.',
     // Cleber's possible actions
     a_kitchen: 'Go to the kitchen',
     a_notnow: 'Say “Not now”',
@@ -79,11 +97,29 @@ EP.I18N = {
 
   de: {
     r1: 'Cleber, hast du schon zu Mittag gegessen? Wärm dir deinen Teller auf, wenn du so weit bist.',
+    r1_2: 'Hallo Cleber, es ist Zeit fürs Mittagessen, wann immer du so weit bist. Dein Teller wartet darauf, aufgewärmt zu werden.',
+    r1_3: 'Cleber, wie wäre es mit etwas zu essen? Du kannst deinen Teller aufwärmen, wann es dir passt.',
+    r1_4: 'Hallo Cleber, ich wollte kurz nachfragen: Hast du schon zu Mittag gegessen? Dein Teller steht bereit.',
     r2: 'Cleber, dein Mittagessen steht im Kühlschrank, wann immer du möchtest.',
+    r2_2: 'Cleber, nur ein sanfter Hinweis: Dein Mittagessen steht im Kühlschrank und wartet auf dich.',
+    r2_3: 'Hallo noch einmal, Cleber. Dein Mittagessen ist im Kühlschrank, wann immer du möchtest.',
+    r2_4: 'Cleber, es eilt nicht, aber dein Mittagessen steht im Kühlschrank, falls du Appetit hast.',
     r3: 'Cleber, eine letzte Erinnerung: Dein Mittagessen steht für dich bereit.',
+    r3_2: 'Cleber, das ist meine letzte Erinnerung für jetzt: Dein Mittagessen steht für dich bereit.',
+    r3_3: 'Noch eine sanfte Erinnerung, Cleber, dann lasse ich dich in Ruhe: Dein Mittagessen ist fertig.',
+    r3_4: 'Cleber, ein letzter Hinweis von mir: Dein Mittagessen wartet auf dich.',
     ack1: 'Das ist in Ordnung, Cleber. Ich melde mich später noch einmal.',
+    ack1_2: 'Kein Problem, Cleber. Ich komme etwas später noch einmal auf dich zurück.',
+    ack1_3: 'Natürlich, Cleber. Ich schaue in einer Weile wieder nach dir.',
+    ack1_4: 'Alles gut, Cleber. Ich erinnere dich später noch einmal.',
     ack2: 'Das ist in Ordnung, Cleber. Danke, dass du es mir sagst.',
+    ack2_2: 'Verstanden, Cleber. Danke, dass du mir Bescheid sagst.',
+    ack2_3: 'Kein Problem, Cleber. Ich schätze es, dass du es mir sagst.',
+    ack2_4: 'Okay, Cleber. Danke für die Rückmeldung.',
     done: 'Danke, Cleber. Noch einen schönen Tag.',
+    done_2: 'Wunderbar, Cleber. Ich hoffe, das Essen hat dir geschmeckt.',
+    done_3: 'Danke, dass du Bescheid gibst, Cleber. Einen schönen Nachmittag.',
+    done_4: 'Schön, Cleber. Pass auf dich auf und genieße den Rest des Tages.',
     a_kitchen: 'In die Küche gehen',
     a_notnow: '„Jetzt nicht“ sagen',
     a_nothing: 'Nichts tun (schläft oder hört nicht zu)',
@@ -139,71 +175,15 @@ EP.I18N = {
     ui_session: 'Sitzung und QR-Code',
     ui_export: 'Notizen exportieren',
     ui_restart: 'Durchgang neu starten'
-  },
-
-  pt: {
-    r1: 'Cleber, você já almoçou? Venha esquentar o seu prato quando quiser.',
-    r2: 'Cleber, o seu almoço está na geladeira, quando você quiser.',
-    r3: 'Cleber, um último lembrete: o seu almoço está pronto para você.',
-    ack1: 'Tudo bem, Cleber. Eu volto a falar com você daqui a pouco.',
-    ack2: 'Tudo bem, Cleber. Agradeço por me avisar.',
-    done: 'Muito bem, Cleber. Tenha um ótimo resto de dia.',
-    a_kitchen: 'Ir para a cozinha',
-    a_notnow: 'Dizer “Agora não”',
-    a_nothing: 'Não fazer nada (dormindo ou sem ouvir)',
-    a_eat_done: 'Comer e dizer “Terminei”',
-    a_eat_silent: 'Comer e não dizer nada',
-    a_leave: 'Sair da cozinha sem comer',
-    a_later_eats: 'Mais tarde, Cleber come o almoço',
-    a_later_no: 'Nada mais acontece',
-    wait_n: '{n} minutos depois…',
-    wait_restart: 'Echo espera. {n} minutos depois, Echo recomeça pelo primeiro lembrete.',
-    kitchen_quiet: 'Cleber está na cozinha. Echo fica em silêncio.',
-    meal_finished: 'A refeição terminou (Echo percebe isso).',
-    echo_rests: 'Echo para e volta ao repouso.',
-    next: 'Continuar',
-    replay: 'Ouvir de novo',
-    voice_level: 'Volume da voz do Echo',
-    voice_same: 'inalterado',
-    reminder_of: 'Lembrete {n} de 3',
-    sim_time: 'Hora simulada',
-    s_waiting: 'Sem notificações',
-    s_waiting_sub: 'O Echo não tem nada para avisar agora.',
-    s_title: 'Refeição pendente: almoço',
-    s_repeat_tag: 'Repetido',
-    s_planned: 'Previsto para {t}. Não foi confirmado que ele comeu.',
-    s_out_none: 'O que aconteceu: Cleber não respondeu aos lembretes.',
-    s_out_notnow: 'O que aconteceu: Cleber disse que não queria comer agora.',
-    s_out_kitchen: 'O que aconteceu: Cleber foi à cozinha, mas o Echo não conseguiu confirmar que ele comeu.',
-    s_reminders: 'O Echo lembrou {n} vezes ({times}) e agora parou.',
-    s_postponed: 'Ele pediu para adiar uma vez; depois disso os lembretes recomeçaram.',
-    s_call: 'Ligar para o Cleber',
-    s_visit: 'Vou visitá-lo',
-    s_noted_call: 'Ligando para o Cleber… Resposta registrada.',
-    s_noted_visit: 'Visita registrada. Resposta registrada.',
-    s_resolved_title: 'Resolvido: almoço',
-    s_resolved_body: 'Cleber já comeu o almoço ({t}). Nenhuma ação é necessária.',
-    s_now: 'agora',
-    s_app: 'Echo',
-    ui_settings: 'Configurações',
-    ui_close: 'Fechar',
-    ui_language: 'Idioma',
-    ui_textsize: 'Tamanho do texto',
-    ui_contrast: 'Alto contraste',
-    ui_night: 'Modo noturno',
-    ui_night_hint: 'Tema escuro, ambiente e LEDs mais fracos. Não faz parte do protótipo especificado (veja o README).',
-    ui_motion: 'Movimento do Echo',
-    ui_motion_lean: 'Leve inclinação + luz',
-    ui_motion_light: 'Só luz',
-    ui_voice: 'Falar em voz alta',
-    ui_captions: 'Mostrar legendas',
-    ui_on: 'Ligado',
-    ui_off: 'Desligado',
-    ui_menu: 'Menu',
-    ui_session: 'Sessão e código QR',
-    ui_export: 'Exportar notas',
-    ui_restart: 'Reiniciar o percurso'
   }
+};
+
+/* Echo says each line in 3-4 wordings (key, key_2, key_3, key_4) so a repeated line, e.g. the first
+   reminder after a postponement, is not the same sentence again. */
+EP.variants = function (key) {
+  var dict = EP.I18N[EP.lang] || EP.I18N.en, out = [key];
+  for (var i = 2; dict[key + '_' + i] !== undefined; i++) out.push(key + '_' + i);
+  return out;
 };
 
 EP.lang = 'en';

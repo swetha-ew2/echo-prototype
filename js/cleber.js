@@ -6,12 +6,19 @@
   var syncStatus = 'init';
   var el = null;          // container
 
-  function fresh(code) {
+  /* Everything that belongs to one scenario run; a new run starts from this and the old one is archived in ST.runs. */
+  function runFields() {
     return {
-      code: code || EP.sync.newCode(), screen: 'brief', n: 1, postponed: 0, last: 'none', clock: 12 * 60 + 30,
+      screen: 'brief', n: 1, postponed: 0, last: 'none', clock: 12 * 60 + 30,
       times: [], pending: null, say: null, escalated: false, outcome: null, alertAt: null, resolvedAt: null,
-      sarahPhase: 'none', notes: {}, followup: {}, visited: [], mode: 'end', sarahNotes: {}, sarahEvents: [], plate: 'cold'
+      sarahPhase: 'none', notes: {}, visited: [], plate: 'cold', spoken: {}, line: null, card: null, trail: [], matched: []
     };
+  }
+  function fresh(code) {
+    return Object.assign(runFields(), {
+      code: code || EP.sync.newCode(), followup: {}, sarahNotes: {}, sarahRuns: [], sarahRunId: null, sarahEvents: [],
+      runs: [], runId: 1, target: 'C1', done: {}, manual: {}
+    });
   }
   function save() { EP.store.set(KEY, ST); }
   function cardId() { return ST.screen === 'closure' || ST.screen === 'after' ? 'CLOSE' : (ST.card || 'R1'); }
@@ -19,7 +26,7 @@
   /* ---------- session / sync ---------- */
   function snapshot() {
     return {
-      type: 'state', ts: Date.now(), code: ST.code, mode: ST.mode, phase: ST.sarahPhase, outcome: ST.outcome,
+      type: 'state', ts: Date.now(), code: ST.code, runId: ST.runId, phase: ST.sarahPhase, outcome: ST.outcome,
       times: ST.times.map(EP.fmtTime), postponed: ST.postponed > 0, mealTime: '12:30',
       alertAt: ST.alertAt != null ? EP.fmtTime(ST.alertAt) : null,
       resolvedAt: ST.resolvedAt != null ? EP.fmtTime(ST.resolvedAt) : null
@@ -30,8 +37,8 @@
   function onMsg(msg) {
     if (msg.type === 'hello') pushState();
     else if (msg.type === 'sarahEvent') {
-      if (!ST.sarahEvents.some(function (e) { return e.id === msg.id; })) { ST.sarahEvents.push({ id: msg.id, kind: msg.kind, at: msg.at }); save(); }
-    } else if (msg.type === 'sarahNotes') { ST.sarahNotes = msg.notes || {}; save(); }
+      if (!ST.sarahEvents.some(function (e) { return e.id === msg.id; })) { ST.sarahEvents.push({ id: msg.id, kind: msg.kind, at: msg.at, run: ST.runId }); save(); refreshScn(); }
+    } else if (msg.type === 'sarahNotes') { ST.sarahNotes = msg.notes || {}; ST.sarahRuns = msg.runs || []; ST.sarahRunId = msg.runId || null; save(); }
   }
   function onStatus(st) {
     if (st === 'idtaken') { ST.code = EP.sync.newCode(); save(); openSync(); return; }
@@ -89,10 +96,12 @@
   }
 
   function briefing() {
+    var again = ST.runs.length > 0;
     return '<main class="brief">' +
+      (again ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
       '<h1>UC01: Support Cleber through a planned meal</h1>' +
       '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
-      '<p>Evaluators: step through as your persona, then answer the questions at the end. Hosts: do not intervene; take notes.</p>' +
+      '<p>Evaluators: step through as your persona and answer the four Yes/No questions at every step; they are required before you can continue. Hosts: do not intervene; take notes.</p>' +
       '<details class="card"><summary><b>Personas and action sequence</b> (for the hosts)</summary>' +
       '<p><b>Cleber</b> lives alone, eats three planned meals a day, and sometimes misses his alarm or notes (other room, asleep). He values independence and security.</p>' +
       '<p><b>Sarah</b>, his caregiver, visits every two to three days and also supports other clients, so she cannot always respond at once. She wants alerts only for concerning situations and does not want Cleber to feel watched.</p>' +
@@ -106,10 +115,7 @@
       '<li class="on">7. Echo stops and rests; Sarah gets a “resolved” update if Cleber eats.</li>' +
       '<li class="off">8–9. Plate-away log and visit summary <em>(not walked)</em></li></ol></details>' +
       sessionCard() +
-      '<div class="center"><button class="btn primary big" data-action="start">Start as Cleber</button>' +
-      '<p class="mode-line">Answer the questions: ' +
-      '<button type="button" class="linkbtn' + (ST.mode === 'end' ? ' cur' : '') + '" data-action="mode-end">at the end</button> · ' +
-      '<button type="button" class="linkbtn' + (ST.mode === 'step' ? ' cur' : '') + '" data-action="mode-step">after each step</button></p></div></main>';
+      '<div class="center"><button class="btn primary big" data-action="start">' + (again ? 'Start next scenario' : 'Start as Cleber') + '</button></div></main>';
   }
 
   function stage(opts) {
@@ -128,15 +134,16 @@
     return '<button class="btn choice" data-action="' + action + '"' + (extra || '') + '>' + EP.esc(label) + '</button>';
   }
 
+  function gateMsg() { return '<p id="gate-msg" class="hint gate-msg">Answer all four Yes/No questions for this step to continue.</p>'; }
+
   function panel(inner) { return '<aside class="panel" id="panel">' + inner + '</aside>'; }
 
   function view() {
-    if (ST.screen === 'brief') { el.innerHTML = header() + briefing(); return; }
+    if (ST.screen === 'brief') { el.innerHTML = header() + '<div class="layout with-scn two">' + scnPanel() + briefing() + '</div>'; return; }
     var s = ST, id = cardId(), body = '';
-    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save };
+    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save, onChange: syncGate };
 
-    var step = s.mode === 'step';
-    function P(html) { return step ? panel(html) : ''; }
+    function P(html) { return panel(html); }
     var qNote = 'After Cleber’s action: what did Echo do, and was it clear what was happening?';
     if (s.screen === 'reminder') {
       body = stage({
@@ -154,45 +161,58 @@
       if (p.type === 'advance') status = EP.t('wait_n', { n: p.wait });
       else if (p.type === 'restart') status = EP.t('wait_restart', { n: p.wait });
       else if (p.type === 'close' && !s.say) status = EP.t('meal_finished');
-      body = stage({ pill: EP.t('reminder_of', { n: s.n }), status: status, choices: btn('next', EP.t('next'), ' data-primary="1"') }) +
+      body = stage({ pill: EP.t('reminder_of', { n: s.n }), status: status, choices: btn('next', EP.t('next'), ' data-primary="1" data-gate="1"') + gateMsg() }) +
         P(EP.wt.formHtml(s.notes, id, { after: qNote }));
     } else if (s.screen === 'closure') {
       var behind = s.escalated
         ? '<p class="behind"><b>Behind the scenes (not seen by Cleber):</b> Echo has told Sarah that lunch is unresolved (' + EP.esc(outcomeName(s.outcome)) + '). Sarah’s phone shows the alert now.</p>'
         : '<p class="behind"><b>Behind the scenes:</b> eating is confirmed, so Echo stops prompting for this meal.</p>';
-      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1"') + behind }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
+      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1" data-gate="1"') + gateMsg() + behind }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
     } else if (s.screen === 'after') {
       body = stage({
         status: EP.t('echo_rests'),
         choices: '<p class="choice-title">Scenario: what happens next? (Sarah’s phone shows the “resolved” update only if Cleber eats)</p>' +
-          btn('later_eats', EP.t('a_later_eats')) + btn('later_no', EP.t('a_later_no'))
+          btn('later_eats', EP.t('a_later_eats'), ' data-gate="1"') + btn('later_no', EP.t('a_later_no'), ' data-gate="1"') + gateMsg()
       }) + P(EP.wt.formHtml(s.notes, 'CLOSE', {}));
-    } else if (s.screen === 'review') {
-      body = '<div class="stage-wrap solo"><h1>Answer the questions</h1><p class="lead">For each step you walked, answer as Cleber.</p><div class="review">' +
-        s.visited.map(function (vid, i) {
-          var m = EP.wt.meta(vid);
-          return '<details' + (i === 0 ? ' open' : '') + '><summary>' + EP.esc(m.step + ': ' + m.title) + '</summary>' + EP.wt.formHtml(s.notes, vid, { after: qNote }) + '</details>';
-        }).join('') + '</div><div class="choices"><button class="btn primary big" data-action="to-followup">Continue</button></div></div>';
+    } else if (s.screen === 'runend') {
+      body = runEndHtml();
     } else if (s.screen === 'followup') {
       body = '<div class="stage-wrap solo"><h1>Last questions</h1><p class="lead">Think back over the whole walkthrough.</p>' +
         '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button></div></div>' + panel(EP.wt.followupHtml(s.followup));
     } else if (s.screen === 'done') {
       body = '<div class="stage-wrap solo"><h1>Done. Hand your notes to the hosts.</h1>' +
-        summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="restart">Start over</button></div></div>';
+        summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="confirm-restart">Start over (deletes all notes)</button></div></div>';
     }
-    var single = s.screen === 'done' || s.screen === 'review' || (!step && ['reminder', 'kitchen', 'result', 'closure', 'after'].indexOf(s.screen) >= 0);
-    el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + '">' + body + '</div>' + simNotice();
+    var single = s.screen === 'done';
+    var scn = ['reminder', 'kitchen', 'result', 'closure', 'after', 'runend'].indexOf(s.screen) >= 0 ? scnPanel() : '';
+    el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
     afterRender(false);
+    syncGate();
+  }
+
+  /* Yes/No answers are required: the buttons that leave a step stay disabled until a to d are answered. */
+  function syncGate() {
+    var s = ST;
+    if (['result', 'closure', 'after'].indexOf(s.screen) < 0) return;
+    var ok = EP.wt.answered(s.notes[cardId()]);
+    var btns = el.querySelectorAll('[data-gate]');
+    for (var i = 0; i < btns.length; i++) btns[i].disabled = !ok;
+    var msg = document.getElementById('gate-msg');
+    if (msg) msg.hidden = ok;
   }
 
   function outcomeName(o) { return o === 'notnow' ? 'refusal' : (o === 'kitchen' ? 'uncertain' : 'non-response'); }
 
   function summary() {
-    var ids = Object.keys(ST.notes);
-    if (!ids.length) return '<p class="hint">No answers were recorded.</p>';
-    return '<ul class="sumlist">' + ids.map(function (id) {
-      var e = ST.notes[id], yes = ['a', 'b', 'c', 'd'].filter(function (k) { return e.q[k] && e.q[k].ans === 'yes'; }).length;
-      return '<li><b>' + EP.esc(e.step) + '</b> ' + EP.esc(e.title) + ': ' + yes + ' of 4 answered yes</li>';
+    var runs = allRuns();
+    if (!runs.length) return '<p class="hint">No answers were recorded.</p>';
+    return '<ul class="sumlist">' + runs.map(function (r) {
+      var sc = (r.scenarios || []).map(function (id) { return EP.scenarios.byId(id).title; }).join('; ') || 'free path';
+      var items = Object.keys(r.notes).map(function (id) {
+        var e = r.notes[id], yes = ['a', 'b', 'c', 'd'].filter(function (k) { return e.q[k] && e.q[k].ans === 'yes'; }).length;
+        return '<li>' + EP.esc(e.step) + ' ' + EP.esc(e.title) + ': ' + yes + ' of 4 answered yes</li>';
+      }).join('');
+      return '<li><b>Scenario ' + r.run + ':</b> ' + EP.esc(sc) + '<ul>' + items + '</ul></li>';
     }).join('') + '</ul>';
   }
 
@@ -203,8 +223,8 @@
     EP.scene.set({ plate: s.plate, lean: false });
     if (s.screen === 'reminder') {
       EP.scene.set({ mode: 'awake', lean: true });
-      if (speak) EP.scene.say('r' + s.n);
-      else { var c = document.getElementById('caption'); if (c && EP.settings.captions) { c.textContent = EP.t('r' + s.n); c.classList.add('show'); } }
+      if (speak) EP.scene.say(s.line || 'r' + s.n);
+      else { var c = document.getElementById('caption'); if (c && EP.settings.captions) { c.textContent = EP.t(s.line || 'r' + s.n); c.classList.add('show'); } }
     } else if (s.screen === 'kitchen') {
       EP.scene.set({ mode: 'quiet' });
     } else if (s.screen === 'result') {
@@ -219,22 +239,32 @@
   /* ---------- transitions ---------- */
   function go(screen, speak) { ST.screen = screen; save(); view(); if (speak) afterRender(false, true); }
 
+  /* The next wording of one of Echo's lines: 1st time the DS-01 wording, then the alternatives in turn,
+     so e.g. the first reminder after a postponement is not the same sentence again. */
+  function pick(key) {
+    var vs = EP.variants(key), n = ST.spoken[key] || 0;
+    ST.spoken[key] = n + 1;
+    return vs[n % vs.length];
+  }
+
+  function trail(a) { ST.trail.push({ n: ST.n, a: a }); }
+
   function visit(id) { EP.wt.ensure(ST.notes, id); if (ST.visited.indexOf(id) < 0) ST.visited.push(id); }
-  function giveReminder(speak) { ST.times.push(ST.clock); ST.screen = 'reminder'; ST.card = 'R' + ST.n + (ST.postponed > 0 ? 'b' : ''); visit(ST.card); save(); view(); if (speak) afterRender(false, true); pushState(); }
+  function giveReminder(speak) { ST.times.push(ST.clock); ST.line = pick('r' + ST.n); ST.screen = 'reminder'; ST.card = 'R' + ST.n + (ST.postponed > 0 ? 'b' : ''); visit(ST.card); save(); view(); if (speak) afterRender(false, true); pushState(); }
 
   var actions = {
-    start: function () { ST.plate = 'cold'; ST.clock = 12 * 60 + 30; ST.times = []; giveReminder(true); },
+    start: function () { ST.trail = []; ST.plate = 'cold'; ST.clock = 12 * 60 + 30; ST.times = []; giveReminder(true); },
     kitchen: function () { ST.last = 'kitchen'; ST.plate = 'warm'; ST.say = null; go('kitchen'); },
     notnow: function () {
-      ST.last = 'notnow';
-      if (ST.postponed === 0) { ST.postponed = 1; ST.pending = { type: 'restart', wait: 30 }; ST.say = 'ack1'; }
-      else { ST.pending = { type: 'advance', wait: 10 }; ST.say = 'ack2'; }
+      trail('notnow'); ST.last = 'notnow';
+      if (ST.postponed === 0) { ST.postponed = 1; ST.pending = { type: 'restart', wait: 30 }; ST.say = pick('ack1'); }
+      else { ST.pending = { type: 'advance', wait: 10 }; ST.say = pick('ack2'); }
       go('result', true);
     },
-    nothing: function () { ST.last = 'none'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
-    leave: function () { ST.last = 'kitchen'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
-    eat_done: function () { ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = 'done'; go('result', true); },
-    eat_silent: function () { ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = null; go('result'); },
+    nothing: function () { trail('nothing'); ST.last = 'none'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
+    leave: function () { trail('leave'); ST.last = 'kitchen'; ST.pending = { type: 'advance', wait: 10 }; ST.say = null; go('result'); },
+    eat_done: function () { trail('done'); ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = pick('done'); go('result', true); },
+    eat_silent: function () { trail('silent'); ST.plate = 'eaten'; ST.pending = { type: 'close' }; ST.say = null; go('result'); },
     next: function () {
       var p = ST.pending || {};
       EP.scene.clear();
@@ -249,12 +279,19 @@
       } else { ST.escalated = false; go('closure'); }
       if (ST.screen === 'closure') { visit('CLOSE'); save(); }
     },
-    'mode-step': function () { ST.mode = 'step'; save(); pushState(); view(); },
-    'mode-end': function () { ST.mode = 'end'; save(); pushState(); view(); },
     'to-followup': function () { go('followup'); },
+    'scn-pick': function (t) { var id = t.getAttribute('data-id'); ST.target = ST.target === id ? null : id; save(); refreshScn(); },
+    'scn-check': function (t) { var id = t.getAttribute('data-id'); ST.manual[id] = !ST.manual[id]; save(); refreshScn(); },
+    another: function () {
+      EP.scene.clear();
+      archiveRun();
+      ST.runId++; ST.target = nextTarget(); ST.screen = 'brief';
+      save(); pushState(); view(); window.scrollTo(0, 0);
+    },
+    'end-session': function () { EP.scene.clear(); archiveRun(); go('followup'); },
     replay: function () {
       var s = ST;
-      if (s.screen === 'reminder') EP.scene.say('r' + s.n);
+      if (s.screen === 'reminder') EP.scene.say(s.line || 'r' + s.n);
       else if (s.screen === 'result' && s.say) EP.scene.say(s.say, { instant: true, lean: false, rest: true });
     },
     later_eats: function () { ST.clock += 25; ST.resolvedAt = ST.clock; ST.sarahPhase = 'resolved'; pushState(); go(afterWalk()); },
@@ -275,26 +312,113 @@
     resultNext();
   };
 
-  function afterWalk() { return ST.mode === 'end' ? 'review' : 'followup'; }
+  /* The run is over: match it to the scenarios and show the "another scenario or end" choice. */
+  function afterWalk() {
+    ST.matched = EP.scenarios.match(runObj());
+    ST.matched.forEach(function (id) { if (!ST.done[id]) ST.done[id] = ST.runId; });
+    return 'runend';
+  }
+
+  function runObj() { return { trail: ST.trail, escalated: ST.escalated, outcome: ST.outcome, postponed: ST.postponed }; }
+  function outcomeText(r) { return r.escalated ? 'unresolved, Sarah alerted (' + outcomeName(r.outcome) + ')' : 'eating confirmed'; }
+  function curRun() {
+    return { run: ST.runId, target: ST.target, scenarios: ST.matched, trail: ST.trail, outcome: outcomeText(ST), postponements: ST.postponed,
+      resolvedAt: ST.resolvedAt != null ? EP.fmtTime(ST.resolvedAt) : null, notes: ST.notes, endedAt: new Date().toISOString() };
+  }
+  function hasRunData() { return ST.trail.length > 0 || Object.keys(ST.notes).length > 0; }
+  /* every run, finished or in progress; nothing is ever dropped */
+  function allRuns() { return ST.runs.concat(hasRunData() ? [curRun()] : []); }
+  function sarahRuns() {
+    return (ST.sarahRuns || []).concat(Object.keys(ST.sarahNotes || {}).length ? [{ run: ST.sarahRunId, notes: ST.sarahNotes }] : []);
+  }
+
+  /* Archive the finished run (its notes are kept in ST.runs), then clear the run's own state. */
+  function archiveRun() {
+    if (hasRunData()) ST.runs.push(curRun());
+    var keep = { code: ST.code, followup: ST.followup, sarahNotes: ST.sarahNotes, sarahRuns: ST.sarahRuns, sarahRunId: ST.sarahRunId, sarahEvents: ST.sarahEvents,
+      runs: ST.runs, runId: ST.runId, target: ST.target, done: ST.done, manual: ST.manual, scnOpen: ST.scnOpen };
+    ST = Object.assign(runFields(), keep);
+  }
+
+  /* Safety copy before anything is wiped (kept in this browser; see README). */
+  function backup() {
+    if (ST && (ST.runs.length || hasRunData())) EP.store.set('echo.backup.' + Date.now(), { savedAt: new Date().toISOString(), data: exportAll() });
+  }
 
   function restart() {
     EP.scene.clear();
+    backup();
     var code = ST.code;
     ST = fresh(code); save(); pushState(); view();
   }
 
   function exportAll() {
-    return EP.wt.exportData({ code: ST.code, language: EP.lang, finalOutcome: ST.escalated ? outcomeName(ST.outcome) : 'eating confirmed', postponements: ST.postponed },
-      { notes: ST.notes, followup: ST.followup },
-      { notes: ST.sarahNotes, events: ST.sarahEvents });
+    var done = doneMap();
+    return EP.wt.exportData({ code: ST.code, language: EP.lang, scenariosDone: Object.keys(done), scenarioRuns: allRuns().length },
+      { runs: allRuns(), followup: ST.followup },
+      { runs: sarahRuns(), events: ST.sarahEvents });
   }
   EP.exportAll = function () {
     var raw = EP.store.get(KEY, null);
     if (!raw) return null;
     var keep = ST; ST = raw;
+    ST.runs = ST.runs || []; ST.trail = ST.trail || []; ST.done = ST.done || {}; ST.manual = ST.manual || {};
     var d = exportAll(); ST = keep || raw;
     return d;
   };
+
+  /* ---------- scenario panel ---------- */
+  function doneMap() {
+    var m = {}, id;
+    for (id in ST.done) m[id] = 'auto';
+    var seen = EP.scenarios.sarahSeen(ST.sarahEvents, ST.resolvedAt != null || ST.runs.some(function (r) { return r.resolvedAt; }));
+    for (id in seen) if (seen[id]) m[id] = 'auto';
+    for (id in ST.manual) if (ST.manual[id] && !m[id]) m[id] = 'manual';
+    return m;
+  }
+  function scnPanel() {
+    var m = doneMap(), all = EP.scenarios.LIST, n = Object.keys(m).length, tgt = EP.scenarios.byId(ST.target);
+    var open = ST.scnOpen === undefined ? window.innerWidth >= 1250 : ST.scnOpen;
+    function group(g, title) {
+      return '<h3>' + title + '</h3><ul class="scn-list">' + all.filter(function (x) { return x.group === g; }).map(function (x) {
+        var st = m[x.id];
+        return '<li class="' + (st ? 'done ' : '') + (x.id === ST.target ? 'target' : '') + '">' +
+          '<button class="scn-box' + (st === 'manual' ? ' manual' : '') + '" data-action="scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + (!!st) + '"' + (st === 'auto' ? ' disabled' : '') +
+          ' aria-label="' + EP.esc(x.title) + (st === 'auto' ? ' (done)' : '') + '" title="' + (st === 'auto' ? 'Done (detected)' : 'Tick if you have done this') + '">' + (st ? '✓' : '') + '</button>' +
+          '<button class="scn-item" data-action="scn-pick" data-id="' + x.id + '"><b>' + EP.esc(x.title) + '</b></button></li>';
+      }).join('') + '</ul>';
+    }
+    return '<aside class="scn"><details class="scn-d"' + (open ? ' open' : '') + '><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + all.length + ' done</span></summary>' +
+      '<p class="hint">Walk each scenario in turn. A scenario is ticked automatically when your run matches it.</p>' +
+      (tgt ? '<div class="scn-now"><b>Now: ' + EP.esc(tgt.title) + '</b><p>' + EP.esc(tgt.how) + '</p></div>' : '<div class="scn-now"><b>Free path</b><p>No scenario chosen. Pick one below, or walk any path you like.</p></div>') +
+      group('cleber', 'Cleber’s screen') + group('sarah', 'Sarah’s phone') +
+      '</details></aside>';
+  }
+  function refreshScn() {
+    var a = document.querySelector('.scn');
+    if (a) a.outerHTML = scnPanel();
+  }
+  function nextTarget() {
+    var m = doneMap();
+    var n = EP.scenarios.LIST.filter(function (x) { return !m[x.id]; })[0];
+    return n ? n.id : null;
+  }
+
+  function runEndHtml() {
+    var m = doneMap(), total = EP.scenarios.LIST.length, left = total - Object.keys(m).length;
+    var got = ST.matched.map(function (id) { return EP.scenarios.byId(id).title; });
+    var tgt = EP.scenarios.byId(ST.target);
+    var line = got.length ? 'This run matched: <b>' + EP.esc(got.join('; ')) + '</b>.' : 'This path is not one of the listed scenarios, but your answers are saved.';
+    if (tgt && ST.matched.indexOf(tgt.id) < 0) line += ' You aimed for “' + EP.esc(tgt.title) + '”; it is not ticked yet.';
+    return '<div class="stage-wrap solo"><h1>Scenario ' + ST.runId + ' complete</h1>' +
+      '<p class="lead">' + line + '</p>' +
+      '<p>Result: ' + EP.esc(outcomeText(ST)) + '. Your answers and notes for this scenario are saved.</p>' +
+      '<p>' + (left ? left + ' scenario' + (left === 1 ? '' : 's') + ' not done yet.' : 'All scenarios are done.') + '</p>' +
+      '<h2>Do you want to do another scenario or end?</h2>' +
+      '<div class="choices row"><button class="btn primary big" data-action="another">Do another scenario</button>' +
+      '<button class="btn big" data-action="end-session">End and answer the last questions</button></div>' +
+      '<p class="hint">You can also download or print your notes from the ☰ menu at any time.</p></div>';
+  }
 
   /* ---------- modals / menu ---------- */
   function modal(html) {
@@ -315,25 +439,37 @@
       sessionCard() + '</div></div>';
   }
 
+  /* remember whether the scenario panel was opened or collapsed */
+  function onToggle(ev) {
+    var d = ev.target;
+    if (ST && d && d.classList && d.classList.contains('scn-d') && ST.scnOpen !== d.open) { ST.scnOpen = d.open; save(); }
+  }
+
   /* ---------- public ---------- */
   EP.cleber = {
     mount: function (container) {
       el = container;
       ST = EP.store.get(KEY, null) || fresh();
-      ST.mode = ST.mode || 'end'; ST.visited = ST.visited || [];
+      ST.visited = ST.visited || []; ST.spoken = ST.spoken || {};
+      ST.runs = ST.runs || []; ST.runId = ST.runId || 1; ST.trail = ST.trail || []; ST.matched = ST.matched || [];
+      ST.done = ST.done || {}; ST.manual = ST.manual || {}; ST.sarahRuns = ST.sarahRuns || [];
+      if (ST.target === undefined) ST.target = 'C1';
+      if (ST.screen === 'review') ST.screen = 'followup';   // saved by an older version
       save();
       openSync();
+      document.addEventListener('toggle', onToggle, true);
       view();
     },
-    unmount: function () { EP.scene.clear(); EP.sync.close(); },
+    unmount: function () { EP.scene.clear(); EP.sync.close(); document.removeEventListener('toggle', onToggle, true); },
     rerender: function () { view(); },
     handle: function (action, target) {
       if (action === 'start') { actions.start(); return true; }
       if (action === 'open-menu') { modal(menuHtml()); return true; }
       if (action === 'open-session') { modal(sessionHtml()); return true; }
       if (action === 'close-modal') { modal(''); return true; }
-      if (action === 'confirm-restart') { modal(''); if (window.confirm('Restart the walkthrough? Notes already entered will be lost.')) { restart(); EP.cleber.rerender(); } return true; }
+      if (action === 'confirm-restart') { modal(''); if (window.confirm('Delete ALL notes (' + allRuns().length + ' scenario' + (allRuns().length === 1 ? '' : 's') + ') and start over?\n\nDownload them first from the menu if you need them. (A safety copy stays in this browser.)')) { restart(); EP.cleber.rerender(); } return true; }
       if (actions[action]) {
+        if (['next', 'later_eats', 'later_no'].indexOf(action) >= 0 && ST.screen !== 'reminder' && ST.screen !== 'kitchen' && !EP.wt.answered(ST.notes[cardId()])) return true;
         actions[action](target);
         return true;
       }

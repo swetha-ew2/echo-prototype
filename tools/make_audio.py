@@ -11,13 +11,14 @@ To use ElevenLabs (or any other service) instead, just replace the mp3 files wit
 names; the page plays whatever is in audio/<lang>/<key>.mp3. Re-run this script after changing
 the wording in js/i18n.js, because the audio is a recording of the text at that time.
 """
-import asyncio, json, os, subprocess, sys
+import asyncio, json, os, re, subprocess, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-KEYS = ["r1", "r2", "r3", "ack1", "ack2", "done"]
+# every spoken line and its variants: r1, r1_2, r1_3, r1_4, r2, ...
+KEY_RE = re.compile(r"^(r[123]|ack[12]|done)(_\d)?$")
 
 # One voice per language. Change them here; run `samples` to listen to alternatives.
-VOICES = {"en": "en-US-AvaNeural", "de": "de-DE-AmalaNeural", "pt": "pt-BR-FranciscaNeural"}
+VOICES = {"en": "en-GB-SoniaNeural", "de": "de-DE-AmalaNeural"}
 RATE = "-14%"     # slower than normal speech
 PITCH = "-2Hz"    # a touch lower, calmer
 VOLUME = "+0%"
@@ -35,7 +36,13 @@ def load_lines():
 async def render(text, voice, path):
     import edge_tts
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    await edge_tts.Communicate(text, voice, rate=RATE, pitch=PITCH, volume=VOLUME).save(path)
+    for attempt in range(6):   # the free service sometimes answers 403 when called quickly; wait and retry
+        try:
+            await edge_tts.Communicate(text, voice, rate=RATE, pitch=PITCH, volume=VOLUME).save(path)
+            return
+        except Exception as e:
+            if attempt == 5: raise
+            await asyncio.sleep(3 * (attempt + 1))
 
 
 async def main():
@@ -46,7 +53,7 @@ async def main():
             print("sample", v)
         return
     for lang, voice in VOICES.items():
-        for k in KEYS:
+        for k in [k for k in lines[lang] if KEY_RE.match(k)]:
             await render(lines[lang][k], voice, os.path.join(ROOT, "audio", lang, k + ".mp3"))
             print(lang, k, voice)
 

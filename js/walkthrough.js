@@ -70,25 +70,25 @@
         '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
-        '<p class="hint">Answer as ' + esc(m.persona) + '. One tap each; add a short reason.</p><ol class="qs">';
+        '<p class="hint">Answer as ' + esc(m.persona) + '. The four Yes/No questions are <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p><ol class="qs">';
       Q.forEach(function (q) {
         var k = q[0], a = e.q[k] || {};
-        h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q"><b>' + k + '.</b> ' + esc(q[1]) + '</p>' +
-          '<div class="yn" role="radiogroup" aria-label="Question ' + k + '">' +
-          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans"' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
-          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans"' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
+        h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q"><b>' + k + '.</b> ' + esc(q[1]) + ' <span class="req" aria-hidden="true">*</span></p>' +
+          '<div class="yn" role="radiogroup" aria-required="true" aria-label="Question ' + k + ' (required)">' +
+          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
+          '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
           '<textarea rows="2" placeholder="' + (a.ans === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.') + '" aria-label="Justification for question ' + k + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
       });
       h += '</ol>';
       if (options.after) {
         h += '<label class="field"><span>' + esc(options.after) + '</span><textarea rows="2" data-card="' + id + '" data-path="after">' + esc(e.after) + '</textarea></label>';
       }
-      h += '<details class="more"' + (e.success || e.failure || e.suggestion || e.other ? ' open' : '') + '><summary>Success story, failure story, suggestions</summary>' +
+      h += '<div class="more"><h3>Success story, failure story, suggestions</h3>' +
         '<label class="field"><span>Success story (why it works)</span><textarea rows="2" data-card="' + id + '" data-path="success">' + esc(e.success) + '</textarea></label>' +
         '<label class="field"><span>Failure story (why it might fail)</span><textarea rows="2" data-card="' + id + '" data-path="failure">' + esc(e.failure) + '</textarea></label>' +
         '<label class="field"><span>Design suggestion</span><textarea rows="2" data-card="' + id + '" data-path="suggestion">' + esc(e.suggestion) + '</textarea></label>' +
         '<label class="field"><span>Any problem outside the sequence</span><textarea rows="2" data-card="' + id + '" data-path="other">' + esc(e.other) + '</textarea></label>' +
-        '</details></section>';
+        '</div></section>';
       return h;
     },
 
@@ -153,20 +153,26 @@
 
     printHtml: function (data) {
       var esc = EP.esc;
-      function cards(path) {
-        if (!path || !path.notes) return '<p class="hint">No notes recorded.</p>';
-        var ids = Object.keys(path.notes);
-        if (!ids.length) return '<p class="hint">No notes recorded.</p>';
-        return ids.map(function (id) {
-          var e = path.notes[id], h = '<article class="pn"><h3>' + esc(e.step) + ': ' + esc(e.title) + '</h3><table>';
-          Q.forEach(function (q) {
-            var a = (e.q && e.q[q[0]]) || {};
-            h += '<tr><td class="k">' + q[0] + '. ' + esc(q[1]) + '</td><td class="v"><b>' + esc((a.ans || '–').toUpperCase()) + '</b> ' + esc(a.why || '') + '</td></tr>';
-          });
-          [['After the action', e.after], ['Success story', e.success], ['Failure story', e.failure], ['Design suggestion', e.suggestion], ['Other problem', e.other]].forEach(function (r) {
-            if (r[1]) h += '<tr><td class="k">' + r[0] + '</td><td class="v">' + esc(r[1]) + '</td></tr>';
-          });
-          return h + '</table></article>';
+      function cards(path, who) {
+        var runs = (path && path.runs) || [];
+        if (!runs.length) return '<p class="hint">No notes recorded.</p>';
+        return runs.map(function (r) {
+          var ids = Object.keys(r.notes || {});
+          var sc = (r.scenarios || []).map(function (id) { return (EP.scenarios.byId(id) || {}).title; }).filter(Boolean).join('; ');
+          var head = '<h3 class="run-h">Scenario run ' + esc(r.run != null ? r.run : (r.runId != null ? r.runId : '?')) + (sc ? ': ' + esc(sc) : '') + '</h3>' +
+            (r.outcome ? '<p class="hint">Result: ' + esc(r.outcome) + '</p>' : '');
+          if (!ids.length) return head + '<p class="hint">No notes recorded.</p>';
+          return head + ids.map(function (id) {
+            var e = r.notes[id], h = '<article class="pn"><h3>' + esc(e.step) + ': ' + esc(e.title) + '</h3><table>';
+            Q.forEach(function (q) {
+              var a = (e.q && e.q[q[0]]) || {};
+              h += '<tr><td class="k">' + q[0] + '. ' + esc(q[1]) + '</td><td class="v"><b>' + esc((a.ans || '–').toUpperCase()) + '</b> ' + esc(a.why || '') + '</td></tr>';
+            });
+            [['After the action', e.after], ['Success story', e.success], ['Failure story', e.failure], ['Design suggestion', e.suggestion], ['Other problem', e.other]].forEach(function (x) {
+              if (x[1]) h += '<tr><td class="k">' + x[0] + '</td><td class="v">' + esc(x[1]) + '</td></tr>';
+            });
+            return h + '</table></article>';
+          }).join('');
         }).join('');
       }
       var fu = '';

@@ -133,7 +133,9 @@ textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 10
 .field { display: block; margin: .7rem 0; }
 .field span { display: block; font-size: .85rem; color: var(--muted); margin-bottom: .2rem; }
 .more { margin-top: .8rem; }
-.more summary { cursor: pointer; font-weight: 600; min-height: 36px; }
+.more h3 { font-size: 1rem; margin: 0 0 .2rem; }
+.req { color: var(--bad); font-weight: 700; }
+.gate-msg { margin: .4rem 0 0; }
 .tabs2 { display: flex; gap: .4rem; margin-bottom: .6rem; }
 .tabs2 button, .tabs-m button { flex: 1; min-height: 40px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 10px; font: inherit; cursor: pointer; }
 .tabs2 button.on, .tabs-m button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -257,3 +259,26 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .seg.wide { margin: .4rem 0 1rem; }
 .review .wt-head { display: none; }
 .mode-line { margin-top: 1rem; color: var(--muted); font-size: .9rem; } .linkbtn.cur { font-weight: 700; text-decoration: none; color: var(--ink); } details.card > summary { cursor: pointer; min-height: 36px; }
+
+/* scenario panel */
+.layout.with-scn { grid-template-columns: 270px minmax(0, 1.15fr) minmax(0, 1fr); max-width: 1700px; }
+.layout.with-scn.two { grid-template-columns: 270px minmax(0, 1fr); max-width: 1200px; }
+.layout.with-scn.two > .brief { padding: 0; margin: 0; max-width: none; }
+@media (max-width: 1250px) { .layout.with-scn, .layout.with-scn.two { grid-template-columns: 1fr; max-width: 800px; } }
+.scn { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: .6rem .8rem; }
+@media (min-width: 1251px) { .scn { position: sticky; top: 4.2rem; max-height: calc(100vh - 5rem); overflow: auto; } }
+.scn summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; gap: .5rem; justify-content: space-between; }
+.scn-count { font-size: .85rem; color: var(--muted); }
+.scn h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: .8rem 0 .3rem; }
+.scn-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .2rem; }
+.scn-list li { display: flex; align-items: flex-start; gap: .4rem; padding: .2rem; border-radius: 8px; }
+.scn-list li.target { background: var(--accent-soft); }
+.scn-box { flex: none; width: 26px; height: 26px; margin-top: 2px; border: 2px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--accent-ink); font-weight: 700; cursor: pointer; padding: 0; }
+.scn-list li.done .scn-box { background: var(--ok); border-color: var(--ok); }
+.scn-box.manual { background: var(--bg) !important; color: var(--ok); }
+.scn-box:disabled { cursor: default; opacity: 1; }
+.scn-item { flex: 1; text-align: left; background: none; border: 0; padding: .15rem .2rem; font: inherit; font-size: .88rem; color: var(--ink); cursor: pointer; min-height: 32px; }
+.scn-now { border: 1px solid var(--accent); border-radius: 10px; padding: .5rem .7rem; background: var(--accent-soft); font-size: .88rem; }
+.scn-now p { margin: .2rem 0 0; }
+.next-run { margin-bottom: 1rem; }
+.run-h { margin-top: 1.2rem; border-bottom: 1px solid var(--line); }

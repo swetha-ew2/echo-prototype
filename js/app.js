@@ -60,7 +60,13 @@
     var a = t.getAttribute('data-action');
     if (a === 'open-settings') { modalRoot.innerHTML = EP.settingsPanel(); return; }
     if (a === 'close-settings') { modalRoot.innerHTML = ''; return; }
-    if (a === 'home-new') { EP.store.del('echo.cleber'); EP.router.go('#/cleber'); return; }
+    if (a === 'home-new') {
+      var old = EP.store.get('echo.cleber', null);
+      var n = old ? (old.runs || []).length + (old.notes && Object.keys(old.notes).length ? 1 : 0) : 0;
+      if (n && !window.confirm('Starting a new session deletes the notes of ' + n + ' scenario' + (n === 1 ? '' : 's') + ' in this browser. Download them first if you need them (Resume session, then the menu).\n\nStart a new session anyway?')) return;
+      if (n) EP.store.set('echo.backup.' + Date.now(), { savedAt: new Date().toISOString(), data: old });   // safety copy
+      EP.store.del('echo.cleber'); EP.router.go('#/cleber'); return;
+    }
     if (a === 'home-resume') { EP.router.go('#/cleber'); return; }
     if (a === 'home-join') { var c = (document.getElementById('join-code').value || '').trim().toUpperCase(); if (c) EP.router.go('#/sarah?s=' + c); return; }
     if (a === 'home-sarah-alone') { EP.router.go('#/sarah'); return; }
