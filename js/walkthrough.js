@@ -94,14 +94,13 @@
 
     followupHtml: function (followup) {
       var esc = EP.esc;
-      var h = '<section class="wt"><div class="wt-head"><span class="chip">Claim UC01-F2-CL3</span></div><h2>Follow-up questions</h2>' +
-        '<p class="hint">Reminders keep Cleber feeling in control. Think back over the whole walkthrough.</p><ol class="qs">';
-      FOLLOWUP.forEach(function (q) {
+      var h = '<ol class="fu-list">';
+      FOLLOWUP.forEach(function (q, n) {
         var f = followup[q[0]] || {};
-        h += '<li><p class="q">' + esc(q[1]) + '</p>' +
-          '<textarea rows="3" data-fu="' + q[0] + '" data-path="text" aria-label="' + esc(q[1]) + '">' + esc(f.text || '') + '</textarea></li>';
+        h += '<li><label for="fu-' + q[0] + '"><span class="fu-n">' + (n + 1) + '</span>' + esc(q[1]) + '</label>' +
+          '<textarea id="fu-' + q[0] + '" rows="4" placeholder="Type your answer here" data-fu="' + q[0] + '" data-path="text">' + esc(f.text || '') + '</textarea></li>';
       });
-      return h + '</ol></section>';
+      return h + '</ol>';
     },
 
     /* One delegated listener keeps notes in sync and saves immediately. */

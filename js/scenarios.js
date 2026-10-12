@@ -1,6 +1,7 @@
 /* The scenarios an evaluator should walk, and how a finished run is matched to them.
-   The prototype has 295 distinct paths for Cleber (3 reminders; per reminder: eat, go to the kitchen and
-   leave, do nothing, or "not now"; the first "not now" restarts the sequence). Most only differ in detail,
+   The prototype has 108 distinct paths for Cleber (3 reminders; per reminder: eat, go to the kitchen and
+   leave, do nothing, or "not now" at reminders 1 and 2 only; the first "not now" restarts the sequence, so
+   Echo gives at most 5 reminders). Most only differ in detail,
    so they are grouped here into the ones that behave differently for Cleber or for Sarah.
    A run's trail is a list of { n: reminder number, a: 'done' | 'silent' | 'leave' | 'nothing' | 'notnow' }. */
 (function () {
@@ -40,7 +41,7 @@
       how: 'Reminder 1: Say “Not now”. After the restart, Do nothing at all three reminders.',
       test: function (r) { return r.escalated && firstNotNow(r.trail) >= 0 && r.outcome === 'none'; } },
     { id: 'C10', group: 'cleber', title: 'Says “not now” twice',
-      how: 'Reminder 1: Say “Not now”. After the restart, say “Not now” again (and at the later reminders). Sarah’s alert says Cleber did not want to eat.',
+      how: 'Reminder 1: Say “Not now”. After the restart, say “Not now” again at reminder 1 or 2, then Do nothing. Sarah’s alert says Cleber did not want to eat. (“Not now” is not available at reminder 3.)',
       test: function (r) { return r.escalated && firstNotNow(r.trail) >= 0 && r.outcome === 'notnow'; } },
     { id: 'C11', group: 'cleber', title: 'Misses reminder 1, “not now” at reminder 2, then eats',
       how: 'Reminder 1: Do nothing. Reminder 2: Say “Not now”. Echo starts again from reminder 1: Go to the kitchen and eat.',

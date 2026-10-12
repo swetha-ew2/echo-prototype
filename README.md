@@ -9,7 +9,7 @@ A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of 
 | Part | UC01 steps | Notes |
 | --- | --- | --- |
 | Host briefing | – | Objective, scenario, both personas, the action sequence and what is walked. Hosts read it aloud. |
-| **Path A: Cleber** (Echo in the kitchen) | 2, 4, 5, 7 | Three reminders; choices *go to the kitchen*, *say "not now"*, *do nothing*; one postponement restarts the sequence, a second does not; eating confirmed by "I'm done" or by Echo noticing; Echo stops and rests. |
+| **Path A: Cleber** (Echo in the kitchen) | 2, 4, 5, 7 | Three reminders; choices *go to the kitchen*, *say "not now"*, *do nothing*; one postponement (at reminder 1 or 2) restarts the sequence, a second does not, and there is no "not now" at reminder 3; eating confirmed by "I'm done" or by Echo noticing; Echo stops and rests. |
 | **Path B: Sarah** (phone view) | 6, 7 | Unresolved-meal alert (refusal, non-response or uncertain), *Call Cleber* / *I'll visit*, repeat after no response, Gilbert notified, "resolved" update. |
 | Walkthrough form | all | The four questions (a to d) are answered **at every step**, next to the step (EM-04, ER-01). Yes/No is **required**: the button that leaves a step stays disabled until a to d are answered; a short reason box opens after each tap. The success story, failure story, suggestion and "other problem" fields are always visible (not folded away). There is no "answer at the end" mode. |
 | CL3 follow-up | – | The three open questions for UC01-F2-CL3 after the walkthrough. |
@@ -19,7 +19,7 @@ Not in it (as in AT-01): steps 1, 3, 8, 9 (detection, camera logic, plate-away l
 
 ## Scenarios, runs and your data
 
-Cleber's path has **295 distinct paths** (three reminders; at each one Cleber can eat, go to the kitchen and leave, do nothing or say "not now"; the first "not now" restarts the sequence; 393 if "I'm done" and eating silently are counted apart). They are grouped into **16 scenarios** in the **Scenarios panel** on the left: 12 for Cleber's screen (eats at once, misses one or two reminders, never responds, kitchen but no eating, "not now" then eats / misses a reminder / never responds / says it twice / goes to the kitchen without eating, and so on) and 4 for Sarah's phone (call, visit, no response then Gilbert, "resolved" update).
+Cleber's path has **108 distinct paths** (three reminders; at each one Cleber can eat, go to the kitchen and leave, do nothing or say "not now"; "not now" is only possible at reminders 1 and 2, and the first one restarts the sequence, so Echo gives at most **5 reminders**; 154 if "I'm done" and eating silently are counted apart). They are grouped into **16 scenarios** in the **Scenarios panel** on the left: 12 for Cleber's screen (eats at once, misses one or two reminders, never responds, kitchen but no eating, "not now" then eats / misses a reminder / never responds / says it twice / goes to the kitchen without eating, and so on) and 4 for Sarah's phone (call, visit, no response then Gilbert, "resolved" update).
 
 - **One scenario at a time:** while a scenario is running the others are greyed out and cannot be picked or ticked; they unlock on the end-of-scenario screen.
 - **Questions open when the step is finished:** the right-hand panel shows three stages (Cleber acts, Answer the questions, Continue). It stays greyed and locked until Cleber's response is complete, then opens with a green prompt.

@@ -109,7 +109,7 @@
       '<li class="off">1. Echo detects the meal condition <em>(not walked)</em></li>' +
       '<li class="on">2. Echo gives a gentle spoken prompt.</li>' +
       '<li class="off">3. Echo observes the response <em>(not walked)</em></li>' +
-      '<li class="on">4. Cleber responds (eats, “not now” once restarts the sequence, or no response); Echo waits and reminds again.</li>' +
+      '<li class="on">4. Cleber responds (eats, “not now” at reminder 1 or 2, once, restarts the sequence, or no response); Echo waits and reminds again.</li>' +
       '<li class="on">5. At most three reminders, no more pressure or volume.</li>' +
       '<li class="on">6. Still unconfirmed: Echo tells Sarah (Sarah’s path).</li>' +
       '<li class="on">7. Echo stops and rests; Sarah gets a “resolved” update if Cleber eats.</li>' +
@@ -157,8 +157,7 @@
     if (s.screen === 'reminder') {
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }),
-        choices: btn('kitchen', EP.t('a_kitchen')) + btn('notnow', EP.t('a_notnow')) + btn('nothing', EP.t('a_nothing')) +
-          ''
+        choices: btn('kitchen', EP.t('a_kitchen')) + (s.n < 3 ? btn('notnow', EP.t('a_notnow')) : btn('notnow', EP.t('a_notnow'), ' disabled') + '<p class="hint">“Not now” is only available at reminders 1 and 2.</p>') + btn('nothing', EP.t('a_nothing'))
       }) + P(EP.wt.formHtml(s.notes, id, {}), 'Waiting for Cleber’s response. Choose what Cleber does; the questions open when this step is finished.');
     } else if (s.screen === 'kitchen') {
       body = stage({
@@ -186,13 +185,15 @@
     } else if (s.screen === 'runend') {
       body = runEndHtml();
     } else if (s.screen === 'followup') {
-      body = '<div class="stage-wrap solo"><h1>Last questions</h1><p class="lead">Think back over the whole walkthrough.</p>' +
-        '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button></div></div>' + panel(EP.wt.followupHtml(s.followup));
+      body = '<div class="stage-wrap solo final"><p class="eyebrow">Last step · Claim UC01-F2-CL3</p><h1>A few last questions</h1>' +
+        '<p class="lead">Think back over all the scenarios you walked. Short answers are fine, and you can leave a box empty.</p>' +
+        EP.wt.followupHtml(s.followup) +
+        '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button><p class="hint">Your answers are saved as you type.</p></div></div>';
     } else if (s.screen === 'done') {
       body = '<div class="stage-wrap solo"><h1>Done. Hand your notes to the hosts.</h1>' +
         summary() + '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="confirm-restart">Start over (deletes all notes)</button></div></div>';
     }
-    var single = s.screen === 'done';
+    var single = s.screen === 'done' || s.screen === 'followup';
     var scn = ['reminder', 'kitchen', 'result', 'closure', 'after', 'runend'].indexOf(s.screen) >= 0 ? scnPanel() : '';
     el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
     afterRender(false);
@@ -212,6 +213,16 @@
     if (msg) msg.hidden = ok;
     var st = document.getElementById('wt-stepper'); if (st) st.setAttribute('data-state', ok ? '3' : '2');
     var um = document.getElementById('unlock-msg'); if (um) um.textContent = unlockText(ok);
+  }
+
+  /* Why the meal is unresolved, judged on the final sequence (after the postponement, if any):
+     it ended with a kitchen visit and no eating, or Cleber said "not now" again, or he did not respond. */
+  function finalOutcome() {
+    var t = ST.trail, i = -1;
+    for (var k = 0; k < t.length; k++) if (t[k].a === 'notnow') { i = k; break; }
+    var seq = i >= 0 ? t.slice(i + 1) : t;
+    if (seq.length && seq[seq.length - 1].a === 'leave') return 'kitchen';
+    return seq.some(function (e) { return e.a === 'notnow'; }) ? 'notnow' : 'none';
   }
 
   function outcomeName(o) { return o === 'notnow' ? 'refusal' : (o === 'kitchen' ? 'uncertain' : 'non-response'); }
@@ -269,6 +280,7 @@
     start: function () { ST.trail = []; ST.plate = 'cold'; ST.clock = 12 * 60 + 30; ST.times = []; giveReminder(true); },
     kitchen: function () { ST.last = 'kitchen'; ST.plate = 'warm'; ST.say = null; go('kitchen'); },
     notnow: function () {
+      if (ST.n >= 3) return;   // “not now” is only possible at reminders 1 and 2
       trail('notnow'); ST.last = 'notnow';
       if (ST.postponed === 0) { ST.postponed = 1; ST.pending = { type: 'restart', wait: 30 }; ST.say = pick('ack1'); }
       else { ST.pending = { type: 'advance', wait: 10 }; ST.say = pick('ack2'); }
@@ -286,7 +298,7 @@
       else if (p.type === 'advance') {
         if (ST.n < 3) { ST.n++; ST.clock += p.wait; giveReminder(true); }
         else {
-          ST.clock += p.wait; ST.escalated = true; ST.outcome = ST.last; ST.alertAt = ST.clock; ST.sarahPhase = 'alert';
+          ST.clock += p.wait; ST.escalated = true; ST.outcome = finalOutcome(); ST.alertAt = ST.clock; ST.sarahPhase = 'alert';
           pushState(); go('closure');
         }
       } else { ST.escalated = false; go('closure'); }
