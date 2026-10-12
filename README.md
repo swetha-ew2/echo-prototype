@@ -21,6 +21,8 @@ Not in it (as in AT-01): steps 1, 3, 8, 9 (detection, camera logic, plate-away l
 
 Cleber's path has **295 distinct paths** (three reminders; at each one Cleber can eat, go to the kitchen and leave, do nothing or say "not now"; the first "not now" restarts the sequence; 393 if "I'm done" and eating silently are counted apart). They are grouped into **16 scenarios** in the **Scenarios panel** on the left: 12 for Cleber's screen (eats at once, misses one or two reminders, never responds, kitchen but no eating, "not now" then eats / misses a reminder / never responds / says it twice / goes to the kitchen without eating, and so on) and 4 for Sarah's phone (call, visit, no response then Gilbert, "resolved" update).
 
+- **One scenario at a time:** while a scenario is running the others are greyed out and cannot be picked or ticked; they unlock on the end-of-scenario screen.
+- **Questions open when the step is finished:** the right-hand panel shows three stages (Cleber acts, Answer the questions, Continue). It stays greyed and locked until Cleber's response is complete, then opens with a green prompt.
 - Click a scenario to make it the target: the panel shows what to do. Click it again for a free path.
 - A Cleber scenario is **ticked automatically** when the run matches it. Sarah's scenarios are ticked when her phone reports them; the tick box can also be set by hand (for example when Sarah's view runs alone).
 - When a scenario ends, the evaluator is asked: **do another scenario, or end** (end leads to the CL3 follow-up questions). Each run keeps its own notes; the print page and the `.json` list every run in order.

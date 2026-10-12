@@ -136,6 +136,15 @@
 
   function gateMsg() { return '<p id="gate-msg" class="hint gate-msg">Answer all four Yes/No questions for this step to continue.</p>'; }
 
+  /* The questions panel for a step: locked (greyed) until the step is finished, then open with a clear prompt. */
+  function stepPanel(html, lockMsg) {
+    var state = lockMsg ? 1 : (EP.wt.answered(ST.notes[cardId()]) ? 3 : 2);
+    var stepper = '<ol class="stepper" id="wt-stepper" data-state="' + state + '"><li><i>1</i>Cleber acts</li><li><i>2</i>Answer the questions</li><li><i>3</i>Continue</li></ol>';
+    if (lockMsg) return panel(stepper + '<p class="lock-msg">🔒 ' + EP.esc(lockMsg) + '</p><div class="wt-lock" inert aria-hidden="true">' + html + '</div>');
+    return panel(stepper + '<p class="unlock-msg" id="unlock-msg">' + unlockText(state === 3) + '</p>' + html);
+  }
+  function unlockText(answered) { return answered ? '✔ All four answered. Press Continue.' : '✔ This step is finished. Answer the four questions below now, then press Continue.'; }
+
   function panel(inner) { return '<aside class="panel" id="panel">' + inner + '</aside>'; }
 
   function view() {
@@ -143,19 +152,19 @@
     var s = ST, id = cardId(), body = '';
     EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save, onChange: syncGate };
 
-    function P(html) { return panel(html); }
+    function P(html, lockMsg) { return stepPanel(html, lockMsg); }
     var qNote = 'After Cleber’s action: what did Echo do, and was it clear what was happening?';
     if (s.screen === 'reminder') {
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }),
         choices: btn('kitchen', EP.t('a_kitchen')) + btn('notnow', EP.t('a_notnow')) + btn('nothing', EP.t('a_nothing')) +
           ''
-      }) + P(EP.wt.formHtml(s.notes, id, {}));
+      }) + P(EP.wt.formHtml(s.notes, id, {}), 'Waiting for Cleber’s response. Choose what Cleber does; the questions open when this step is finished.');
     } else if (s.screen === 'kitchen') {
       body = stage({
         pill: EP.t('reminder_of', { n: s.n }), status: EP.t('kitchen_quiet'),
         choices: btn('eat_done', EP.t('a_eat_done')) + btn('eat_silent', EP.t('a_eat_silent')) + btn('leave', EP.t('a_leave'))
-      }) + P(EP.wt.formHtml(s.notes, id, { after: qNote }));
+      }) + P(EP.wt.formHtml(s.notes, id, { after: qNote }), 'Cleber is in the kitchen. Finish the step (eat, or leave); then the questions open.');
     } else if (s.screen === 'result') {
       var p = s.pending || {}, status = '';
       if (p.type === 'advance') status = EP.t('wait_n', { n: p.wait });
@@ -188,6 +197,8 @@
     el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
     afterRender(false);
     syncGate();
+    var pn = document.getElementById('panel');
+    if (pn && !pn.querySelector('.wt-lock') && ['result', 'closure'].indexOf(s.screen) >= 0 && window.innerWidth <= 920) pn.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
 
   /* Yes/No answers are required: the buttons that leave a step stay disabled until a to d are answered. */
@@ -199,6 +210,8 @@
     for (var i = 0; i < btns.length; i++) btns[i].disabled = !ok;
     var msg = document.getElementById('gate-msg');
     if (msg) msg.hidden = ok;
+    var st = document.getElementById('wt-stepper'); if (st) st.setAttribute('data-state', ok ? '3' : '2');
+    var um = document.getElementById('unlock-msg'); if (um) um.textContent = unlockText(ok);
   }
 
   function outcomeName(o) { return o === 'notnow' ? 'refusal' : (o === 'kitchen' ? 'uncertain' : 'non-response'); }
@@ -280,8 +293,8 @@
       if (ST.screen === 'closure') { visit('CLOSE'); save(); }
     },
     'to-followup': function () { go('followup'); },
-    'scn-pick': function (t) { var id = t.getAttribute('data-id'); ST.target = ST.target === id ? null : id; save(); refreshScn(); },
-    'scn-check': function (t) { var id = t.getAttribute('data-id'); ST.manual[id] = !ST.manual[id]; save(); refreshScn(); },
+    'scn-pick': function (t) { if (isRunning()) return; var id = t.getAttribute('data-id'); ST.target = ST.target === id ? null : id; save(); refreshScn(); },
+    'scn-check': function (t) { if (isRunning()) return; var id = t.getAttribute('data-id'); ST.manual[id] = !ST.manual[id]; save(); refreshScn(); },
     another: function () {
       EP.scene.clear();
       archiveRun();
@@ -378,22 +391,26 @@
   }
   function scnPanel() {
     var m = doneMap(), all = EP.scenarios.LIST, n = Object.keys(m).length, tgt = EP.scenarios.byId(ST.target);
+    var busy = isRunning();
     var open = ST.scnOpen === undefined ? window.innerWidth >= 1250 : ST.scnOpen;
     function group(g, title) {
       return '<h3>' + title + '</h3><ul class="scn-list">' + all.filter(function (x) { return x.group === g; }).map(function (x) {
         var st = m[x.id];
         return '<li class="' + (st ? 'done ' : '') + (x.id === ST.target ? 'target' : '') + '">' +
-          '<button class="scn-box' + (st === 'manual' ? ' manual' : '') + '" data-action="scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + (!!st) + '"' + (st === 'auto' ? ' disabled' : '') +
+          '<button class="scn-box' + (st === 'manual' ? ' manual' : '') + '" data-action="scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + (!!st) + '"' + (st === 'auto' || busy ? ' disabled' : '') +
           ' aria-label="' + EP.esc(x.title) + (st === 'auto' ? ' (done)' : '') + '" title="' + (st === 'auto' ? 'Done (detected)' : 'Tick if you have done this') + '">' + (st ? '✓' : '') + '</button>' +
-          '<button class="scn-item" data-action="scn-pick" data-id="' + x.id + '"><b>' + EP.esc(x.title) + '</b></button></li>';
+          '<button class="scn-item" data-action="scn-pick" data-id="' + x.id + '"' + (busy ? ' disabled' : '') + '><b>' + EP.esc(x.title) + '</b></button></li>';
       }).join('') + '</ul>';
     }
-    return '<aside class="scn"><details class="scn-d"' + (open ? ' open' : '') + '><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + all.length + ' done</span></summary>' +
-      '<p class="hint">Walk each scenario in turn. A scenario is ticked automatically when your run matches it.</p>' +
+    return '<aside class="scn' + (busy ? ' busy' : '') + '"><details class="scn-d"' + (open ? ' open' : '') + '><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + all.length + ' done</span></summary>' +
+      '<p class="hint">' + (busy ? '🔒 You are in a scenario. The others unlock when it ends.' : 'Pick a scenario, then start. It is ticked automatically when your run matches it.') + '</p>' +
       (tgt ? '<div class="scn-now"><b>Now: ' + EP.esc(tgt.title) + '</b><p>' + EP.esc(tgt.how) + '</p></div>' : '<div class="scn-now"><b>Free path</b><p>No scenario chosen. Pick one below, or walk any path you like.</p></div>') +
       group('cleber', 'Cleber’s screen') + group('sarah', 'Sarah’s phone') +
       '</details></aside>';
   }
+  /* true while a scenario is being walked (between Start and the end-of-scenario screen) */
+  function isRunning() { return ['reminder', 'kitchen', 'result', 'closure', 'after'].indexOf(ST.screen) >= 0; }
+
   function refreshScn() {
     var a = document.querySelector('.scn');
     if (a) a.outerHTML = scnPanel();

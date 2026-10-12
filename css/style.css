@@ -282,3 +282,20 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .scn-now p { margin: .2rem 0 0; }
 .next-run { margin-bottom: 1rem; }
 .run-h { margin-top: 1.2rem; border-bottom: 1px solid var(--line); }
+
+/* locked scenario list while a scenario is running */
+.scn.busy .scn-list li:not(.target) { opacity: .4; }
+.scn.busy button:disabled { cursor: not-allowed; }
+.scn.busy .scn-list li.target .scn-item { cursor: default; }
+
+/* step flow in the questions panel: act, answer, continue */
+.stepper { list-style: none; display: flex; gap: .3rem; margin: 0 0 .7rem; padding: 0; font-size: .8rem; }
+.stepper li { flex: 1; display: flex; align-items: center; gap: .35rem; padding: .35rem .5rem; border-radius: 8px; border: 1px solid var(--line); color: var(--muted); }
+.stepper i { font-style: normal; font-weight: 700; width: 1.3rem; height: 1.3rem; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line); flex: none; }
+.stepper[data-state="1"] li:nth-child(1), .stepper[data-state="2"] li:nth-child(2), .stepper[data-state="3"] li:nth-child(3) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.stepper[data-state="2"] li:nth-child(1), .stepper[data-state="3"] li:nth-child(-n+2) { color: var(--ok); border-color: var(--ok); }
+.stepper[data-state="2"] li:nth-child(1) i, .stepper[data-state="3"] li:nth-child(-n+2) i { background: var(--ok); border-color: var(--ok); color: var(--accent-ink); }
+.lock-msg { background: var(--bg); border: 1px dashed var(--line); border-radius: 10px; padding: .6rem .8rem; color: var(--muted); margin: 0 0 .6rem; }
+.wt-lock { opacity: .4; filter: grayscale(1); pointer-events: none; user-select: none; }
+.unlock-msg { border: 2px solid var(--ok); border-radius: 10px; padding: .5rem .8rem; margin: 0 0 .6rem; font-weight: 600; }
+@media (max-width: 560px) { .stepper { flex-direction: column; } }
