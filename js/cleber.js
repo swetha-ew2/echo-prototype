@@ -192,16 +192,11 @@
       body = stage({ pill: EP.t('reminder_of', { n: s.n }), status: status, choices: btn('next', EP.t('next'), ' data-primary="1" data-gate="1"') + gateMsg() }) +
         P(EP.wt.formHtml(s.notes, id, { set: (ST.trail[ST.trail.length - 1] || {}).a === 'notnow' ? 'postpone' : null, after: qNote }));
     } else if (s.screen === 'closure') {
-      var behind = s.plateGone
-        ? '<p class="behind"><b>Behind the scenes:</b> the plate did not return. Echo logs it as not returned, sends no alert and stops prompting.</p>'
-        : s.escalated
-        ? '<p class="behind"><b>Behind the scenes (not seen by Cleber):</b> Echo has told Sarah that lunch is unresolved (' + EP.esc(outcomeName(s.outcome)) + '). Sarah’s phone shows the alert now.</p>'
-        : '<p class="behind"><b>Behind the scenes:</b> eating is confirmed, so Echo stops prompting for this meal.</p>';
-      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1" data-gate="1"') + gateMsg() + behind }) + P(EP.wt.formHtml(s.notes, 'CLOSE', { set: endSet() }));
+      body = stage({ status: EP.t('echo_rests'), choices: btn('next', EP.t('next'), ' data-primary="1" data-gate="1"') + gateMsg() }) + P(EP.wt.formHtml(s.notes, 'CLOSE', { set: endSet() }));
     } else if (s.screen === 'after') {
       body = stage({
         status: EP.t('echo_rests'),
-        choices: '<p class="choice-title">Scenario: what happens next? (Sarah’s phone shows the “resolved” update only if Cleber eats)</p>' +
+        choices: '<p class="choice-title">Scenario: what happens next?</p>' +
           btn('later_eats', EP.t('a_later_eats'), ' data-gate="1"') + btn('later_no', EP.t('a_later_no'), ' data-gate="1"') + gateMsg()
       }) + P(EP.wt.formHtml(s.notes, 'CLOSE', { set: endSet() }));
     } else if (s.screen === 'runend') {
@@ -355,7 +350,6 @@
     },
     'to-followup': function () { go('followup'); },
     'scn-pick': function (t) { if (isRunning()) return; var id = t.getAttribute('data-id'); ST.target = ST.target === id ? null : id; save(); refreshScn(); },
-    'scn-check': function (t) { if (isRunning()) return; var id = t.getAttribute('data-id'); ST.manual[id] = !ST.manual[id]; save(); refreshScn(); },
     another: function () {
       EP.scene.clear();
       archiveRun();
@@ -475,7 +469,6 @@
   function doneMap() {
     var m = {}, id;
     for (id in ST.done) m[id] = 'auto';
-        for (id in ST.manual) if (ST.manual[id] && !m[id]) m[id] = 'manual';
     return m;
   }
   function scnPanel() {
@@ -483,16 +476,14 @@
     var busy = isRunning();
     var open = ST.scnOpen === undefined ? window.innerWidth >= 1250 : ST.scnOpen;
     function group(g, title) {
-      return '<h3>' + title + '</h3><ul class="scn-list">' + all.filter(function (x) { return x.group === g; }).map(function (x) {
+      return '<h3>' + title + '</h3><ul class="scn-list" role="radiogroup" aria-label="Scenario">' + all.filter(function (x) { return x.group === g; }).map(function (x) {
         var st = m[x.id];
         return '<li class="' + (st ? 'done ' : '') + (x.id === ST.target ? 'target' : '') + '">' +
-          '<button class="scn-box' + (st === 'manual' ? ' manual' : '') + '" data-action="scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + (!!st) + '"' + (st === 'auto' || busy ? ' disabled' : '') +
-          ' aria-label="' + EP.esc(x.title) + (st === 'auto' ? ' (done)' : '') + '" title="' + (st === 'auto' ? 'Done (detected)' : 'Tick if you have done this') + '">' + (st ? '✓' : '') + '</button>' +
-          '<button class="scn-item" data-action="scn-pick" data-id="' + x.id + '"' + (busy ? ' disabled' : '') + '><b>' + EP.esc(x.title) + '</b></button></li>';
+          '<button class="scn-item" data-action="scn-pick" data-id="' + x.id + '" role="radio" aria-checked="' + (x.id === ST.target) + '"' + (busy ? ' disabled' : '') + '><i class="rad" aria-hidden="true"></i><b>' + EP.esc(x.title) + '</b>' + (st ? '<span class="scn-done">✓ done</span>' : '') + '</button></li>';
       }).join('') + '</ul>';
     }
     return '<aside class="scn' + (busy ? ' busy' : '') + '"><details class="scn-d"' + (open ? ' open' : '') + '><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + all.length + ' done</span></summary>' +
-      '<p class="hint">' + (busy ? '🔒 You are in a scenario. The others unlock when it ends.' : 'Pick a scenario, then start. It is ticked automatically when your run matches it.') + '</p>' +
+      '<p class="hint">' + (busy ? '🔒 You are in a scenario. The others unlock when it ends.' : 'Pick the scenario you want to do next, then start.') + '</p>' +
       (tgt ? '<div class="scn-now"><b>Now: ' + EP.esc(tgt.title) + '</b><p>' + EP.esc(tgt.how) + '</p></div>' : '<div class="scn-now"><b>Free path</b><p>No scenario chosen. Pick one below, or walk any path you like.</p></div>') +
       group('cleber', 'Scenarios for Cleber') +
       '</details></aside>';
@@ -518,7 +509,7 @@
     if (tgt && ST.matched.indexOf(tgt.id) < 0) line += ' You aimed for “' + EP.esc(tgt.title) + '”; it is not ticked yet.';
     return '<div class="stage-wrap solo"><h1>Scenario ' + ST.runId + ' complete</h1>' +
       '<p class="lead">' + line + '</p>' +
-      '<p>Result: ' + EP.esc(outcomeText(ST)) + '. Your answers and notes for this scenario are saved.</p>' +
+      '<p>Result: ' + (ST.escalated ? 'the meal was left unresolved' : 'eating was confirmed') + '. Your answers and notes for this scenario are saved.</p>' +
       '<p>' + (left ? left + ' scenario' + (left === 1 ? '' : 's') + ' not done yet.' : 'All scenarios are done.') + '</p>' +
       '<h2>Do you want to do another scenario or end?</h2>' +
       '<div class="choices row"><button class="btn primary big" data-action="another">Do another scenario</button>' +

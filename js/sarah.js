@@ -159,12 +159,11 @@
   /* Sarah's scenarios: ticked when her phone reports them, or by hand. */
   function scnHtml() {
     var seen = EP.scenarios.sarahSeen(SS.events, SS.resolvedEver || SS.seenResolved), list = EP.scenarios.LIST.filter(function (x) { return x.group === 'sarah'; });
-    var n = list.filter(function (x) { return seen[x.id] || SS.manual[x.id]; }).length;
+    var n = list.filter(function (x) { return seen[x.id]; }).length;
     return '<details class="scn-d sarah-scn" open><summary><b>Scenarios</b> <span class="scn-count">' + n + ' of ' + list.length + ' done</span></summary>' +
-      '<p class="hint">Try each one on the phone. It is ticked when the phone detects it, or tick it yourself.</p><ul class="scn-list">' + list.map(function (x) {
-        var auto = !!seen[x.id], st = auto || !!SS.manual[x.id];
-        return '<li class="' + (st ? 'done' : '') + '"><button class="scn-box' + (st && !auto ? ' manual' : '') + '" data-action="s-scn-check" data-id="' + x.id + '" role="checkbox" aria-checked="' + st + '"' + (auto ? ' disabled' : '') + ' aria-label="' + EP.esc(x.title) + '">' + (st ? '✓' : '') + '</button>' +
-          '<div class="scn-item"><b>' + EP.esc(x.title) + '</b><span class="scn-how">' + EP.esc(x.how) + '</span></div></li>';
+      '<p class="hint">Try each one on the phone.</p><ul class="scn-list">' + list.map(function (x) {
+        var st = !!seen[x.id];
+        return '<li class="' + (st ? 'done' : '') + '"><div class="scn-item"><i class="rad" aria-hidden="true"></i><span><b>' + EP.esc(x.title) + '</b>' + (st ? '<span class="scn-done">✓ done</span>' : '') + '<span class="scn-how">' + EP.esc(x.how) + '</span></span></div></li>';
       }).join('') + '</ul></details>';
   }
 
@@ -214,7 +213,6 @@
     's-resolve': function () {
       snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; SS.resolvedEver = true; save(); view();
     },
-    's-scn-check': function (t) { var id = t.getAttribute('data-id'); SS.manual[id] = !SS.manual[id]; save(); view(); },
     's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); var keep = { oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual, setSeen: SS.setSeen }; SS = fresh(); SS.events = keep.events; SS.resolvedEver = keep.resolvedEver; SS.manual = keep.manual; SS.setSeen = keep.setSeen || {}; SS.runs = runs; SS.code = code; SS.oq = keep.oq; SS.seenSummary = keep.seenSummary; snap = { phase: 'none' }; pview = 'lock'; save(); view(); }
   };
 

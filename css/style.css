@@ -354,3 +354,8 @@ html[data-contrast="1"] .caption::before { border-right-color: #000; }
 .sarah-scn { margin: 0 0 .8rem; }
 .sarah-scn .scn-item { cursor: default; display: block; }
 .scn-how { display: block; font-size: .8rem; color: var(--muted); margin-top: .15rem; }
+
+.scn-item { display: flex; align-items: flex-start; gap: .55rem; width: 100%; }
+.scn-item .rad { flex: none; width: 18px; height: 18px; margin-top: 3px; border: 2px solid var(--line); border-radius: 50%; background: var(--bg); }
+.scn-list li.target .rad { border-color: var(--accent); box-shadow: inset 0 0 0 4px var(--bg), inset 0 0 0 9px var(--accent); }
+.scn-done { margin-left: .5rem; font-size: .75rem; font-weight: 700; color: var(--ok); white-space: nowrap; }
