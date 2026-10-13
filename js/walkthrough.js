@@ -57,9 +57,10 @@
         '<li><b>Lives alone</b> in an apartment. Sarah, his caregiver, comes every two to three days and leaves prepared meals ready.</li>' +
         '<li><b>Meals:</b> three planned meals a day, 30 minutes to an hour each. He gets up, walks to the kitchen, heats the meal in the microwave and eats.</li>' +
         '<li><b>Today:</b> it is 12:30, his planned lunch. The meal is ready and he has not been near the kitchen.</li>' +
-        '<li><b>What goes wrong:</b> he is in another room than his alarm or notes 2 to 3 times a week, and falls asleep and does not hear the alarm 2 to 3 times a week. He may also not feel hungry, not like the food or not feel like eating.</li>' +
+        '<li><b>How meals go wrong today, without Echo:</b> he uses an alarm and notes to remember. He is in another room than them 2 to 3 times a week, and falls asleep and does not hear the alarm 2 to 3 times a week. Sometimes he also just does not feel hungry, does not like the food or does not feel like eating.</li>' +
         '<li><b>Values:</b> security and independence matter most to him; his health matters too. He should not feel controlled or watched.</li>' +
-        '<li><b>People:</b> grandfather of Gilbert (lives in another city); Hanz gives him routine health checks.</li></ul>' +
+        '<li><b>People:</b> Gilbert is his grandson and lives in another city, Sarah is his caregiver, and Hanz is his doctor.'+
+        '</li></ul>' +
         '<p class="hint"><b>You decide</b> what Cleber does at each reminder. Choose what you think he would do, not what is easiest to test.</p></details>';
     },
     sarah: function (open) {
