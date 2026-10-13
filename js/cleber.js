@@ -251,7 +251,7 @@
       var sc = (r.scenarios || []).map(function (id) { return EP.scenarios.byId(id).title; }).join('; ') || 'free path';
       var items = Object.keys(r.notes).map(function (id) {
         var e = r.notes[id], cy = EP.wt.countYes(e);
-        return '<li>' + EP.esc(e.step) + ' ' + EP.esc(e.title) + ': ' + (cy.total ? cy.yes + ' of ' + cy.total + ' answered yes' : 'no new questions') + '</li>';
+        return '<li>' + EP.esc(e.title) + ': ' + (cy.total ? cy.yes + ' of ' + cy.total + ' answered yes' : 'no new questions') + '</li>';
       }).join('');
       return '<li><b>Scenario ' + r.run + ':</b> ' + EP.esc(sc) + '<ul>' + items + '</ul></li>';
     }).join('') + '</ul>';

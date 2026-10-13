@@ -149,7 +149,7 @@
       (standalone ? 'Open the simulation controls below the phone to send the first alert.' : 'Wait for Cleber’s evaluator to reach the end of the reminders.') + '</p></section>';
     var id = snap.phase === 'resolved' ? 'S7' : 'S6', h = '';
     if (snap.phase === 'resolved') {
-      h += '<div class="tabs2"><button class="' + (SS.card !== 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S7">Step 7: resolved</button><button class="' + (SS.card === 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S6">Step 6: alert</button></div>';
+      h += '<div class="tabs2"><button class="' + (SS.card !== 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S7">Resolved update</button><button class="' + (SS.card === 'S6' ? 'on' : '') + '" data-action="s-card" data-card="S6">Alert</button></div>';
       id = SS.card === 'S6' ? 'S6' : 'S7';
     }
     return h + EP.wt.formHtml(SS.notes, id, id === 'S6' ? { set: 'alert', after: 'After Sarah’s action (or after the repeat): was it clear what happens next?' } : { set: 'resolved' });

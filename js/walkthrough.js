@@ -4,34 +4,34 @@
   /* The walkthrough questions are specific to the step. Each set is shown only where it applies, so an evaluator
      answers the questions that fit what Echo just did (Yes/No, required, with a short reason). */
   var SETS = {
-    init: { title: 'Step 2 · Initial reminder', qs: [
+    init: { title: 'Initial reminder', qs: [
       ['in1', 'Does the reminder encourage Cleber to consider lunch without sounding demanding?'],
       ['in2', 'Would Cleber notice and understand the reminder in the described situation?'],
       ['in3', 'Is the next action clear while leaving him free to choose?']] },
-    postpone: { title: 'Step 4 · Postponement', qs: [
+    postpone: { title: 'Postponement', qs: [
       ['pp1', 'Does Echo accept the postponement without making it feel like a mistake?'],
       ['pp2', 'Is it clear what happens next?'],
       ['pp3', 'Does Cleber retain a meaningful sense of choice?']] },
-    kitchen: { title: 'Step 4 · Entering the kitchen', qs: [
+    kitchen: { title: 'Entering the kitchen', qs: [
       ['ki1', 'Does Echo’s quiet behaviour let Cleber continue independently?'],
       ['ki2', 'Can Cleber eat without being required to say “I’m done”?']] },
-    repeat: { title: 'Step 4 · Repeated reminder', qs: [
+    repeat: { title: 'Repeated reminder', qs: [
       ['rp1', 'Is it clear that the reminder concerns the same planned meal?'],
       ['rp2', 'Does the reminder still feel like an invitation rather than pressure?'],
       ['rp3', 'Is its purpose understandable?']] },
-    final: { title: 'Step 5 · Third reminder', qs: [
+    final: { title: 'Third reminder', qs: [
       ['fi1', 'Is this reminder as gentle as the earlier ones, with no louder or more pressing wording?'],
       ['fi2', 'Does Cleber still have a meaningful choice about responding?']] },
-    end_ok: { title: 'Step 7 · Ending: eating is confirmed', qs: [
+    end_ok: { title: 'Ending: eating is confirmed', qs: [
       ['en1', 'Is it clear that the interaction has ended and reminders will stop?']] },
-    end_open: { title: 'Step 7 · Ending: eating is not confirmed', qs: [
+    end_open: { title: 'Ending: eating is not confirmed', qs: [
       ['en2', 'Is it clear that the sequence has ended for now?']] },
     // Sarah's path (UC01 steps 6 and 7); worded for the persona in HP-01
-    alert: { title: 'Step 6 · Unresolved-meal alert', qs: [
+    alert: { title: 'Unresolved-meal alert', qs: [
       ['sa1', 'Does the alert tell Sarah which meal is unresolved and why (refusal, no response or not confirmed)?'],
       ['sa2', 'Is it clear what she can do next (call, visit or wait), while she stays free to choose?'],
       ['sa3', 'Does it read as a situation worth an alert, not as an alarm for a delayed meal?']] },
-    resolved: { title: 'Step 7 · “Resolved” update', qs: [
+    resolved: { title: '“Resolved” update', qs: [
       ['sr1', 'Is it clear that the meal is now resolved and that she needs to do nothing more?'],
       ['sr2', 'Does the update stay calm: information, not another alarm?']] }
   };
@@ -159,11 +159,11 @@
       }).sort(function (x, y) { return (x === current) - (y === current); });
       var multi = shown.length > 1, anyFull = shown.some(function (sid) { return !e.lite[sid]; });
       var h = '<section class="wt" data-card="' + id + '">' +
-        '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
+        '<div class="wt-head"><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
         (anyFull ? '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>' : '<p class="hint">Answer as ' + esc(m.persona) + '. You answered this step’s questions earlier in the session, so only note what was different.</p>');
-      var groups = shown.length ? shown.map(function (sid) { return { sid: sid, lite: !!e.lite[sid], title: SETS[sid] && SETS[sid].title + (sid === current || e.lite[sid] ? '' : ' (not answered yet)'), qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
+      var groups = shown.length ? shown.map(function (sid) { return { sid: sid, lite: !!e.lite[sid], title: SETS[sid] && SETS[sid].title, qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
       groups.forEach(function (g) {
         if (multi && g.title) h += '<h3 class="qset">' + esc(g.title) + '</h3>';
         else if (g.title) h += '<p class="qset-one">' + esc(g.title) + '</p>';
