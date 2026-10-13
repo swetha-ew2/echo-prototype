@@ -18,7 +18,7 @@
   function fresh(code) {
     return Object.assign(runFields(), {
       code: code || EP.sync.newCode(), followup: {}, sarahNotes: {}, sarahRuns: [], sarahRunId: null, sarahEvents: [],
-      runs: [], runId: 1, target: 'C1', done: {}, manual: {}, sarahOQ: null
+      runs: [], runId: 1, target: 'C1', done: {}, manual: {}, sarahOQ: null, setSeen: {}
     });
   }
   function save() { EP.store.set(KEY, ST); }
@@ -101,7 +101,6 @@
   function header() {
     return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype</small></div></div>' +
       '<div class="top-actions">' + syncChip() +
-      '<button class="btn ghost small" data-action="open-hostnotes">Host notes</button>' +
       '<button class="btn ghost small" data-action="open-log">Event log</button>' +
       '<button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button>' +
       '<button class="icon-btn" data-action="open-menu" aria-label="' + EP.esc(EP.t('ui_menu')) + '">☰</button></div></header>';
@@ -171,7 +170,7 @@
   function view() {
     if (ST.screen === 'brief') { el.innerHTML = header() + '<div class="layout with-scn two">' + scnPanel() + briefing() + '</div>'; return; }
     var s = ST, id = cardId(), body = '';
-    EP.wt.ctx = { notes: s.notes, followup: s.followup, save: save, onChange: syncGate };
+    EP.wt.ctx = { notes: s.notes, followup: s.followup, seen: s.setSeen = s.setSeen || {}, save: save, onChange: syncGate };
 
     function P(html, lockMsg) { return stepPanel(html, lockMsg); }
     var qNote = 'After Cleber’s action: what did Echo do, and was it clear what was happening?';
@@ -257,7 +256,7 @@
       var sc = (r.scenarios || []).map(function (id) { return EP.scenarios.byId(id).title; }).join('; ') || 'free path';
       var items = Object.keys(r.notes).map(function (id) {
         var e = r.notes[id], cy = EP.wt.countYes(e);
-        return '<li>' + EP.esc(e.step) + ' ' + EP.esc(e.title) + ': ' + cy.yes + ' of ' + cy.total + ' answered yes</li>';
+        return '<li>' + EP.esc(e.step) + ' ' + EP.esc(e.title) + ': ' + (cy.total ? cy.yes + ' of ' + cy.total + ' answered yes' : 'no new questions') + '</li>';
       }).join('');
       return '<li><b>Scenario ' + r.run + ':</b> ' + EP.esc(sc) + '<ul>' + items + '</ul></li>';
     }).join('') + '</ul>';
@@ -373,7 +372,6 @@
     later_no: function () { go(afterWalk()); },
     finish: function () { go('done'); },
     'open-log': function () { modal(logHtml()); },
-    'open-hostnotes': function () { modal(hostNotesHtml()); },
     'log-plate-leave': function () {
       ST.plateAway = ST.clock; ST.withheld = false;
       logEv('plate_left', 'The table camera sees the plate leave the table. No reminder or alert is sent while it is away.');
@@ -437,7 +435,7 @@
   function archiveRun() {
     if (hasRunData()) ST.runs.push(curRun());
     var keep = { code: ST.code, followup: ST.followup, sarahNotes: ST.sarahNotes, sarahRuns: ST.sarahRuns, sarahRunId: ST.sarahRunId, sarahEvents: ST.sarahEvents,
-      runs: ST.runs, runId: ST.runId, target: ST.target, done: ST.done, manual: ST.manual, scnOpen: ST.scnOpen, sarahOQ: ST.sarahOQ };
+      runs: ST.runs, runId: ST.runId, target: ST.target, done: ST.done, manual: ST.manual, scnOpen: ST.scnOpen, sarahOQ: ST.sarahOQ, setSeen: ST.setSeen };
     ST = Object.assign(runFields(), keep);
   }
 
@@ -558,17 +556,6 @@
       }).join('') + '</ul></div></div>';
   }
 
-  /* Success and failure stories, suggestions and other problems: written by the hosts, not the evaluator. */
-  function hostNotesHtml() {
-    var id = ST.screen === 'closure' || ST.screen === 'after' ? 'CLOSE' : (ST.card && isRunning() ? ST.card : ST.visited[ST.visited.length - 1]);
-    var body;
-    if (!id) body = '<p class="hint">Host notes belong to a step. Start a scenario first, then open this during or after a step.</p>';
-    else { var m = EP.wt.meta(id); body = '<p class="hint">Scenario ' + ST.runId + ' · ' + EP.esc(m.step) + ': ' + EP.esc(m.title) + '</p>' + EP.wt.hostFieldsHtml(ST.notes, id); }
-    return '<div class="modal-back"><div class="modal wide" role="dialog" aria-modal="true">' +
-      '<div class="modal-head"><h2>Host notes</h2><button class="btn ghost" data-action="close-modal">' + EP.esc(EP.t('ui_close')) + '</button></div>' +
-      '<p class="hint">For the hosts: success stories, failure stories, design suggestions and any problem outside the sequence. The evaluator does not need to fill these in.</p>' + body + '</div></div>';
-  }
-
   function menuHtml() {
     return '<div class="modal-back"><div class="modal" role="dialog" aria-modal="true">' +
       '<div class="modal-head"><h2>' + EP.esc(EP.t('ui_menu')) + '</h2><button class="btn ghost" data-action="close-modal">' + EP.esc(EP.t('ui_close')) + '</button></div>' +
@@ -596,7 +583,7 @@
       ST = EP.store.get(KEY, null) || fresh();
       ST.visited = ST.visited || []; ST.spoken = ST.spoken || {};
       ST.runs = ST.runs || []; ST.runId = ST.runId || 1; ST.trail = ST.trail || []; ST.matched = ST.matched || [];
-      ST.done = ST.done || {}; ST.manual = ST.manual || {}; ST.sarahRuns = ST.sarahRuns || [];
+      ST.done = ST.done || {}; ST.manual = ST.manual || {}; ST.sarahRuns = ST.sarahRuns || []; ST.setSeen = ST.setSeen || {};
       if (ST.target === undefined) ST.target = 'C1';
       if (ST.screen === 'review') ST.screen = 'followup';   // saved by an older version
       save();

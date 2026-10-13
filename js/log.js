@@ -192,6 +192,11 @@
     ['B4', 'Was missing data clearly shown, or could you read a gap as “all fine”?']
   ];
 
+  var OQ_C = [
+    ['C1', 'Which parts of the alerts and the summary worked well for you as Sarah, and what made them work?'],
+    ['C2', 'What would you change so they are easier to act on, or is there anything these scenarios did not cover that would matter to you?']
+  ];
+
   function openHtml(group, items, vals, run) {
     var esc = EP.esc;
     return '<ol class="fu-list">' + items.map(function (it, n) {
@@ -200,6 +205,11 @@
     }).join('') + '</ol>';
   }
 
+  function diffHtml(group, vals, run) {
+    var esc = EP.esc, id = 'oq-' + group + (run || '') + 'diff';
+    return '<ol class="fu-list"><li><label for="' + id + '">Was anything different this time?</label><textarea id="' + id + '" rows="3" placeholder="Optional. Leave it empty if nothing was different." data-oq="' + group + '" data-item="diff"' + (run ? ' data-run="' + esc(run) + '"' : '') + '>' + esc((vals || {}).diff || '') + '</textarea></li></ol>';
+  }
+
   EP.log = { LABEL: LABEL, check: check, checkSummary: summaryOfChecks, episode: episode, summaryHtml: summaryHtml, sample: sample };
-  EP.oq = { A: OQ_A, B: OQ_B, html: openHtml };
+  EP.oq = { A: OQ_A, B: OQ_B, C: OQ_C, html: openHtml, diffHtml: diffHtml };
 })();

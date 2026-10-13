@@ -1,5 +1,5 @@
 /* Cognitive walkthrough form (EM-04, ER-01): Yes/No questions specific to each step, with a justification,
-   plus the hosts' success/failure stories and design suggestions, and the CL3 follow-up questions. */
+   plus the open follow-up questions at the end. */
 (function () {
   /* The walkthrough questions are specific to the step. Each set is shown only where it applies, so an evaluator
      answers the questions that fit what Echo just did (Yes/No, required, with a short reason). */
@@ -42,7 +42,11 @@
     ['q1', 'Was there a moment when a reminder felt like too much, or pushy? Which one?'],
     ['q2', 'Did it feel possible to say no or to postpone, and was it clear how?'],
     ['q3', 'Would you want Echo to stay quiet at any point? When?'],
-    ['q4', 'Were you able to recognise how the reminders and the escalation to Sarah help build a healthy eating habit and support Cleber’s meals? Why or why not?']
+    ['q4', 'Were you able to recognise how the reminders and the escalation to Sarah help build a healthy eating habit and support Cleber’s meals? Why or why not?'],
+    ['q5', 'Which moments worked well for Cleber, and what made them work?'],
+    ['q6', 'Where could it go wrong for Cleber in real life, for example if he is asleep, confused or irritated? What would happen?'],
+    ['q7', 'What would you change about what Echo says, when it speaks, or what happens next?'],
+    ['q8', 'Is there anything that would matter to Cleber that these scenarios did not cover?']
   ];
 
   /* Persona cards for the evaluator. */
@@ -109,7 +113,7 @@
     ensure: function (notes, id) {
       if (!notes[id]) {
         var m = EP.wt.meta(id);
-        notes[id] = { id: id, step: m.step, title: m.title, persona: m.persona, q: {}, sets: [], success: '', failure: '', suggestion: '', other: '', after: '' };
+        notes[id] = { id: id, step: m.step, title: m.title, persona: m.persona, q: {}, sets: [], order: [], lite: {}, diff: {}, after: '' };
       }
       return notes[id];
     },
@@ -117,7 +121,8 @@
     /* The questions of an entry, in the order its sets were shown (entries from older sessions use the four baseline questions). */
     questionsOf: function (entry) {
       if (!entry) return [];
-      if (!entry.sets || !entry.sets.length) return LEGACY;
+      if ((!entry.sets || !entry.sets.length) && !(entry.order && entry.order.length)) return LEGACY;
+      if (!entry.sets) return [];
       var out = [];
       entry.sets.forEach(function (id) { if (SETS[id]) out = out.concat(SETS[id].qs); });
       return out;
@@ -126,7 +131,7 @@
     /* Every question that applies to the step so far has a Yes or No. */
     answered: function (entry) {
       var qs = EP.wt.questionsOf(entry);
-      return !!entry && qs.length > 0 && qs.every(function (q) { return entry.q[q[0]] && entry.q[q[0]].ans; });
+      return !!entry && qs.every(function (q) { return entry.q[q[0]] && entry.q[q[0]].ans; });
     },
 
     countYes: function (entry) {
@@ -139,23 +144,33 @@
     formHtml: function (notes, id, options) {
       options = options || {};
       var e = EP.wt.ensure(notes, id), m = EP.wt.meta(id), esc = EP.esc;
-      if (options.set && SETS[options.set] && e.sets.indexOf(options.set) < 0) e.sets.push(options.set);
-      /* Only the questions of the step on screen are shown. Questions of an earlier step of this reminder come back
-         only while they are still unanswered, because they are required before Continue. */
-      var current = options.set || e.sets[e.sets.length - 1];
-      var shown = e.sets.filter(function (sid) {
-        return sid === current || (SETS[sid] && SETS[sid].qs.some(function (q) { return !(e.q[q[0]] && e.q[q[0]].ans); }));
+      /* A step's questions are asked in full the first time that step appears in the session. Later times (another
+         reminder, another scenario) only ask "Was anything different this time?". */
+      e.order = e.order || e.sets.slice(); e.lite = e.lite || {}; e.diff = e.diff || {};
+      var st = options.set;
+      if (st && SETS[st] && e.order.indexOf(st) < 0) {
+        var seen = EP.wt.ctx && EP.wt.ctx.seen;
+        e.order.push(st);
+        if (seen && seen[st]) e.lite[st] = true; else { e.sets.push(st); if (seen) seen[st] = true; }
+      }
+      var current = st || e.order[e.order.length - 1];
+      var shown = e.order.filter(function (sid) {
+        return sid === current || (!e.lite[sid] && SETS[sid] && SETS[sid].qs.some(function (q) { return !(e.q[q[0]] && e.q[q[0]].ans); }));
       }).sort(function (x, y) { return (x === current) - (y === current); });
-      var multi = shown.length > 1;
+      var multi = shown.length > 1, anyFull = shown.some(function (sid) { return !e.lite[sid]; });
       var h = '<section class="wt" data-card="' + id + '">' +
         '<div class="wt-head"><span class="chip">' + esc(m.step) + '</span><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
-        '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>';
-      var groups = e.sets.length ? shown.map(function (sid) { return { title: SETS[sid] && SETS[sid].title + (sid === current ? '' : ' (not answered yet)'), qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
+        (anyFull ? '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>' : '<p class="hint">Answer as ' + esc(m.persona) + '. You answered this step’s questions earlier in the session, so only note what was different.</p>');
+      var groups = shown.length ? shown.map(function (sid) { return { sid: sid, lite: !!e.lite[sid], title: SETS[sid] && SETS[sid].title + (sid === current || e.lite[sid] ? '' : ' (not answered yet)'), qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
       groups.forEach(function (g) {
         if (multi && g.title) h += '<h3 class="qset">' + esc(g.title) + '</h3>';
         else if (g.title) h += '<p class="qset-one">' + esc(g.title) + '</p>';
+        if (g.lite) {
+          h += '<label class="field"><span>Was anything different this time?</span><textarea rows="2" placeholder="Optional. Leave it empty if nothing was different." data-card="' + id + '" data-path="diff.' + g.sid + '">' + esc(e.diff[g.sid] || '') + '</textarea></label>';
+          return;
+        }
         h += '<ol class="qs">';
         g.qs.forEach(function (q) {
           var k = q[0], a = e.q[k] || {};
@@ -172,14 +187,6 @@
       }
       h += '</section>';
       return h;
-    },
-
-    /* The hosts' own fields for a step (success and failure stories, suggestions, other problems). */
-    hostFieldsHtml: function (notes, id) {
-      var e = EP.wt.ensure(notes, id), esc = EP.esc;
-      function f(label, path, val) { return '<label class="field"><span>' + label + '</span><textarea rows="3" data-card="' + id + '" data-path="' + path + '">' + esc(val) + '</textarea></label>'; }
-      return f('Success story (why it works)', 'success', e.success) + f('Failure story (why it might fail)', 'failure', e.failure) +
-        f('Design suggestion', 'suggestion', e.suggestion) + f('Any problem outside the sequence', 'other', e.other);
     },
 
     followupHtml: function (followup) {
@@ -273,6 +280,9 @@
               var a = (e.q && e.q[q[0]]) || {};
               h += '<tr><td class="k">' + esc(q[1]) + '</td><td class="v"><b>' + esc((a.ans || '–').toUpperCase()) + '</b> ' + esc(a.why || '') + '</td></tr>';
             });
+            Object.keys(e.diff || {}).forEach(function (sid) {
+              if (e.diff[sid]) h += '<tr><td class="k">' + esc((SETS[sid] || {}).title || sid) + ': was anything different this time?</td><td class="v">' + esc(e.diff[sid]) + '</td></tr>';
+            });
             [['After the action', e.after], ['Success story', e.success], ['Failure story', e.failure], ['Design suggestion', e.suggestion], ['Other problem', e.other]].forEach(function (x) {
               if (x[1]) h += '<tr><td class="k">' + x[0] + '</td><td class="v">' + esc(x[1]) + '</td></tr>';
             });
@@ -295,9 +305,11 @@
         }
         qn = '<h2>Sarah: open questions</h2>';
         Object.keys(oq.A || {}).forEach(function (r) {
-          qn += '<h3 class="run-h">After the alert, scenario ' + esc(r) + '</h3>' + (oq.A[r].truth ? '<p class="hint">Actual reason: ' + esc(oq.A[r].truth) + '</p>' : '') + qa(EP.oq.A, oq.A[r]);
+          var av = oq.A[r], items = EP.oq.A.filter(function (it) { return !av.diff || av[it[0]]; });
+          qn += '<h3 class="run-h">After the alert, scenario ' + esc(r) + '</h3>' + (av.truth ? '<p class="hint">Actual reason: ' + esc(av.truth) + '</p>' : '') + qa(items, av) +
+            (av.diff !== undefined ? '<table><tr><td class="k">Was anything different this time?</td><td class="v">' + esc(av.diff || '–') + '</td></tr></table>' : '');
         });
-        qn += '<h3 class="run-h">After the visit summary</h3>' + qa(EP.oq.B, oq.B);
+        qn += '<h3 class="run-h">After the visit summary</h3>' + qa(EP.oq.B, oq.B) + '<h3 class="run-h">At the end</h3>' + qa(EP.oq.C, oq.C);
       }
       return '<h1>Walkthrough notes: Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
         '<h2>Path A: Cleber</h2>' + cards(data.cleberPath) + fu +

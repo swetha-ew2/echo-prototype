@@ -26,7 +26,7 @@
       how: 'Do nothing at all three reminders. Sarah’s alert says Cleber did not respond.',
       test: function (r) { var t = r.trail; return r.escalated && t.length === 3 && t.every(function (e) { return e.a === 'nothing'; }); } },
     { id: 'C6', group: 'cleber', title: 'Goes to the kitchen but never eats',
-      how: 'At each reminder: Go to the kitchen, then “Leave the kitchen without eating”. Sarah’s alert says eating is unconfirmed.',
+      how: 'Never say “Not now” and never eat. Reminders 1 and 2: do nothing, or go to the kitchen and leave without eating (your choice). Reminder 3: go to the kitchen and leave without eating. Sarah’s alert says eating is unconfirmed.',
       test: function (r) { return r.escalated && r.outcome === 'kitchen' && firstNotNow(r.trail) < 0; } },
     { id: 'C7', group: 'cleber', title: '“Not now”, then eats at the next reminder',
       how: 'Reminder 1: Say “Not now”. Echo starts again from reminder 1: Go to the kitchen and eat.',
@@ -47,7 +47,7 @@
       how: 'Reminder 1: Do nothing. Reminder 2: Say “Not now”. Echo starts again from reminder 1: Go to the kitchen and eat.',
       test: function (r) { var i = firstNotNow(r.trail); return i >= 1 && ate(last(r.trail)); } },
     { id: 'C12', group: 'cleber', title: '“Not now”, then goes to the kitchen but does not eat',
-      how: 'Reminder 1: Say “Not now”. After the restart, at each reminder Go to the kitchen and Leave without eating.',
+      how: 'Reminder 1: Say “Not now”. After the restart, never eat. Reminders 1 and 2: do anything except eat (do nothing, leave the kitchen, or say “Not now” once more). Reminder 3: go to the kitchen and leave without eating. Sarah’s alert says eating is unconfirmed.',
       test: function (r) { return r.escalated && firstNotNow(r.trail) >= 0 && r.outcome === 'kitchen'; } },
 
     { id: 'S1', group: 'sarah', title: 'Sarah calls Cleber',

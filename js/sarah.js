@@ -8,7 +8,7 @@
   var standalone = false;
   var pview = 'lock', ptab = 'steps';   // phone screen (lock or visit summary); panel tab (step questions or questionnaire)
 
-  function fresh() { return { code: null, runId: null, runs: [], card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, seenSummary: false, oq: { A: {}, B: {} }, events: [], resolvedEver: false, manual: {} }; }
+  function fresh() { return { code: null, runId: null, runs: [], card: 'S7', notes: {}, responded: null, skips: 0, seenAlert: false, seenResolved: false, seenSummary: false, oq: { A: {}, B: {} }, events: [], resolvedEver: false, manual: {}, setSeen: {} }; }
   function save() { EP.store.set(KEY, SS); }
 
   function sendEvent(kind) {
@@ -27,7 +27,7 @@
   function newRun(runId) {
     var old = SS, runs = (old.runs || []).slice();
     if (hasNotes(old)) runs.push({ runId: old.runId, notes: old.notes });
-    SS = fresh(); SS.code = code; SS.runs = runs; SS.runId = runId; SS.events = old.events || []; SS.resolvedEver = !!old.resolvedEver; SS.manual = old.manual || {};
+    SS = fresh(); SS.code = code; SS.runs = runs; SS.runId = runId; SS.events = old.events || []; SS.resolvedEver = !!old.resolvedEver; SS.manual = old.manual || {}; SS.setSeen = old.setSeen || {};
     SS.oq = old.oq || SS.oq; SS.seenSummary = old.seenSummary;   // the questionnaire answers belong to the whole session
     pview = 'lock';
     sendNotes();
@@ -58,7 +58,6 @@
   function header() {
     return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Sarah’s phone</small></div></div>' +
       '<div class="top-actions">' + (standalone ? '<span class="chip-btn wait"><i></i>No session</span>' : chip()) +
-      '<button class="btn ghost small" data-action="s-hostnotes">Host notes</button>' +
       '<button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button></div></header>';
   }
 
@@ -97,10 +96,14 @@
     var a = (SS.oq.A[SS.runId] = SS.oq.A[SS.runId] || {}), h = '<section class="wt"><h2>Open questions</h2><p class="hint">Answer as Sarah, in your own words. Short answers are fine.</p>';
     h += '<h3>After the alert</h3>';
     if (!showAlert) h += '<p class="hint">The alert has not arrived on the phone yet. You can answer once you have seen it.</p>';
-    h += EP.oq.html('A', EP.oq.A, a, String(SS.runId));
+    var again = Object.keys(SS.oq.A).some(function (r) { return r !== String(SS.runId) && EP.oq.A.some(function (it) { return SS.oq.A[r][it[0]]; }); });
+    if (again) h += '<p class="hint">You answered these after an earlier alert, so only note what was different this time.</p>' + EP.oq.diffHtml('A', a, String(SS.runId));
+    else h += EP.oq.html('A', EP.oq.A, a, String(SS.runId));
     h += '<h3>After the visit summary</h3>';
     if (!SS.seenSummary) h += '<p class="hint">Open the visit summary on the phone first (“Open visit summary”); then answer.</p>';
     h += EP.oq.html('B', EP.oq.B, SS.oq.B, '');
+    SS.oq.C = SS.oq.C || {};
+    h += '<h3>At the end</h3><p class="hint">When you have walked your scenarios.</p>' + EP.oq.html('C', EP.oq.C, SS.oq.C, '');
     return h + '</section>';
   }
 
@@ -171,17 +174,10 @@
       (ptab === 'quest' ? questionnaireHtml() : stepsHtml()) + '</aside>';
   }
 
-  function hostNotesModal() {
-    var showAlert = snap.phase === 'alert' || snap.phase === 'resolved', id = curCard();
-    var body = showAlert ? '<p class="hint">Step: ' + EP.esc(EP.wt.meta(id).step + ': ' + EP.wt.meta(id).title) + '</p>' + EP.wt.hostFieldsHtml(SS.notes, id)
-      : '<p class="hint">Host notes belong to a step. They are available once Sarah’s phone has received something.</p>';
-    return '<div class="modal-back"><div class="modal wide" role="dialog" aria-modal="true"><div class="modal-head"><h2>Host notes</h2><button class="btn ghost" data-action="close-modal">' + EP.esc(EP.t('ui_close')) + '</button></div>' +
-      '<p class="hint">For the hosts: success stories, failure stories, design suggestions and any problem outside the sequence.</p>' + body + '</div></div>';
-  }
-
   function view() {
-    EP.wt.ctx = { notes: SS.notes, followup: {}, save: function () { save(); sendNotes(); }, setOpen: function (g, i, v, run) {
+    EP.wt.ctx = { notes: SS.notes, followup: {}, seen: SS.setSeen = SS.setSeen || {}, save: function () { save(); sendNotes(); }, setOpen: function (g, i, v, run) {
       if (g === 'B') SS.oq.B[i] = v;
+      else if (g === 'C') { SS.oq.C = SS.oq.C || {}; SS.oq.C[i] = v; }
       else if (g === 'A') { var a = (SS.oq.A[run || SS.runId] = SS.oq.A[run || SS.runId] || {}); a[i] = v; a.truth = truth(); }
       save(); sendNotes();
     } };
@@ -206,21 +202,20 @@
     's-summary': function () { pview = 'summary'; SS.seenSummary = true; save(); sendNotes(); view(); },
     's-lock': function () { pview = 'lock'; view(); },
     's-ptab': function (t) { ptab = t.getAttribute('data-ptab'); view(); },
-    's-hostnotes': function () { document.getElementById('modal-root').innerHTML = hostNotesModal(); },
     'close-modal': function () { document.getElementById('modal-root').innerHTML = ''; },
     's-tab': function (t) { tab = t.getAttribute('data-tab'); view(); },
     's-card': function (t) { SS.card = t.getAttribute('data-card'); view(); },
     's-send': function () {
       var sel = document.getElementById('s-outcome');
       var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []);
-      SS = Object.assign(fresh(), { runs: runs, runId: runs.length + 1, seenAlert: true, code: code, oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual }); pview = 'lock';
+      SS = Object.assign(fresh(), { runs: runs, runId: runs.length + 1, seenAlert: true, code: code, oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual, setSeen: SS.setSeen }); pview = 'lock';
       sendLocalSnapshot(sel ? sel.value : 'none'); save(); view();
     },
     's-resolve': function () {
       snap = Object.assign({}, snap, { phase: 'resolved', resolvedAt: EP.fmtTime(12 * 60 + 55) }); SS.seenResolved = true; SS.resolvedEver = true; save(); view();
     },
     's-scn-check': function (t) { var id = t.getAttribute('data-id'); SS.manual[id] = !SS.manual[id]; save(); view(); },
-    's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); var keep = { oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual }; SS = fresh(); SS.events = keep.events; SS.resolvedEver = keep.resolvedEver; SS.manual = keep.manual; SS.runs = runs; SS.code = code; SS.oq = keep.oq; SS.seenSummary = keep.seenSummary; snap = { phase: 'none' }; pview = 'lock'; save(); view(); }
+    's-reset': function () { var runs = (SS.runs || []).concat(hasNotes(SS) ? [{ runId: SS.runId, notes: SS.notes }] : []); var keep = { oq: SS.oq, seenSummary: SS.seenSummary, events: SS.events, resolvedEver: SS.resolvedEver, manual: SS.manual, setSeen: SS.setSeen }; SS = fresh(); SS.events = keep.events; SS.resolvedEver = keep.resolvedEver; SS.manual = keep.manual; SS.setSeen = keep.setSeen || {}; SS.runs = runs; SS.code = code; SS.oq = keep.oq; SS.seenSummary = keep.seenSummary; snap = { phase: 'none' }; pview = 'lock'; save(); view(); }
   };
 
   EP.sarah = {
