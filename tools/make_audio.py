@@ -5,6 +5,7 @@ same gentle voice (no dependency on the browser's built-in voices).
 Uses the `edge-tts` package (free, no API key; it calls Microsoft's online neural voices).
     python3 -m pip install edge-tts
     python3 tools/make_audio.py            # all languages
+    python3 tools/make_audio.py r3         # only the lines r3, r3_2, ... (after changing their wording)
     python3 tools/make_audio.py samples    # one line in several voices, to compare by ear
 
 To use ElevenLabs (or any other service) instead, just replace the mp3 files with the same
@@ -52,8 +53,9 @@ async def main():
             await render(lines["en"]["r1"], v, os.path.join(ROOT, "tools", "voice-samples", v + ".mp3"))
             print("sample", v)
         return
+    only = sys.argv[1:]   # optional: only keys starting with these, e.g. `make_audio.py r3`
     for lang, voice in VOICES.items():
-        for k in [k for k in lines[lang] if KEY_RE.match(k)]:
+        for k in [k for k in lines[lang] if KEY_RE.match(k) and (not only or k.split('_')[0] in only)]:
             await render(lines[lang][k], voice, os.path.join(ROOT, "audio", lang, k + ".mp3"))
             print(lang, k, voice)
 

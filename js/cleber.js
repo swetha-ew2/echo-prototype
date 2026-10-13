@@ -117,7 +117,7 @@
       (again ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
       '<h1>Support Cleber through a planned meal</h1>' +
       '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
-      '<p>Evaluators: step through as your persona and answer the Yes/No questions shown at each step; they are required before you can continue. Hosts: do not intervene; take notes.</p>' +
+      '<p>Evaluators: step through as your persona and answer the Yes/No questions shown at each step; they are required before you can continue.</p>' +
       EP.personas.cleber(true) +
       '<details class="card"><summary><b>Action sequence</b> (for the hosts)</summary>' +
       '<p><b>Cleber</b> lives alone, eats three planned meals a day, and sometimes misses his alarm or notes (other room, asleep). He values independence and security.</p>' +
@@ -127,7 +127,7 @@
       '<li class="on">2. Echo gives a gentle spoken prompt.</li>' +
       '<li class="off">3. Echo observes the response <em>(not walked)</em></li>' +
       '<li class="on">4. Cleber responds (eats, “not now” at reminder 1 or 2, once, restarts the sequence, or no response); Echo waits and reminds again.</li>' +
-      '<li class="on">5. At most three reminders, no more pressure or volume.</li>' +
+      '<li class="on">5. At most three reminders in a sequence, with no more pressure or volume. “Not now” is only offered at reminders 1 and 2, and a postponement restarts the sequence, so there are at most five reminders in total.</li>' +
       '<li class="on">6. Still unconfirmed: Echo tells Sarah (Sarah’s path).</li>' +
       '<li class="on">7. Echo stops and rests; Sarah gets a “resolved” update if Cleber eats.</li>' +
       '<li class="off">8–9. Plate-away log and visit summary <em>(not walked)</em></li></ol></details>' +

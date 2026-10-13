@@ -103,7 +103,7 @@
         }
         if (!EP.settings.voice) { later(finish, ms); return; }
         try {
-          audio = new Audio('audio/' + EP.lang + '/' + key + '.mp3?v=4');
+          audio = new Audio('audio/' + EP.lang + '/' + key + '.mp3?v=5');
           audio.volume = 0.85;   // the same level on every reminder: no rising pressure
           audio.onended = function () { later(finish, 500); };
           audio.onerror = function () { audio = null; fallbackVoice(); };

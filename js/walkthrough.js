@@ -19,8 +19,8 @@
       ['rp1', 'Is it clear that the reminder concerns the same planned meal?'],
       ['rp2', 'Does the reminder still feel like an invitation rather than pressure?'],
       ['rp3', 'Is its purpose understandable?']] },
-    final: { title: 'Step 5 · Third and final reminder', qs: [
-      ['fi1', 'Is it clear this is the final reminder in the current sequence?'],
+    final: { title: 'Step 5 · Third reminder', qs: [
+      ['fi1', 'Is this reminder as gentle as the earlier ones, with no louder or more pressing wording?'],
       ['fi2', 'Does Cleber still have a meaningful choice about responding?']] },
     end_ok: { title: 'Step 7 · Ending: eating is confirmed', qs: [
       ['en1', 'Is it clear that the interaction has ended and reminders will stop?']] },
