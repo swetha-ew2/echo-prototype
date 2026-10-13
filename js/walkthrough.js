@@ -41,7 +41,8 @@
   var FOLLOWUP = [
     ['q1', 'Was there a moment when a reminder felt like too much, or pushy? Which one?'],
     ['q2', 'Did it feel possible to say no or to postpone, and was it clear how?'],
-    ['q3', 'Would you want Echo to stay quiet at any point? When?']
+    ['q3', 'Would you want Echo to stay quiet at any point? When?'],
+    ['q4', 'Were you able to recognise how the reminders and the escalation to Sarah help build a healthy eating habit and support Cleber’s meals? Why or why not?']
   ];
 
   /* Persona cards for the evaluator. */
