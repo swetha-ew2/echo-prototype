@@ -113,7 +113,7 @@
   function briefing() {
     var again = ST.runs.length > 0;
     return '<main class="brief">' +
-      (again ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
+      (again && !EP.demo ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
       '<h1>Support Cleber through a planned meal</h1>' +
       '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
       (EP.demo ? '<p>Demo: choose what Cleber does at each reminder. Open the Event log (top right) to see what Echo records.</p>'
@@ -132,7 +132,7 @@
       '<li class="on">7. Echo stops and rests; Sarah gets a “resolved” update if Cleber eats.</li>' +
       '<li class="off">8–9. Plate-away log and visit summary <em>(not walked)</em></li></ol></details>' +
       sessionCard() +
-      '<div class="center"><button class="btn primary big" data-action="start">' + (again ? 'Start next scenario' : 'Start as Cleber') + '</button></div></main>';
+      '<div class="center"><button class="btn primary big" data-action="start">' + (again ? (EP.demo ? 'Start another run' : 'Start next scenario') : 'Start as Cleber') + '</button></div></main>';
   }
 
   function stage(opts) {
@@ -170,7 +170,7 @@
   function panel(inner) { return '<aside class="panel" id="panel">' + inner + '</aside>'; }
 
   function view() {
-    if (ST.screen === 'brief') { el.innerHTML = header() + '<div class="layout with-scn two">' + scnPanel() + briefing() + '</div>'; return; }
+    if (ST.screen === 'brief') { el.innerHTML = header() + (EP.demo ? '<div class="layout single">' + briefing() + '</div>' : '<div class="layout with-scn two">' + scnPanel() + briefing() + '</div>'); return; }
     var s = ST, id = cardId(), body = '';
     EP.wt.ctx = { notes: s.notes, followup: s.followup, seen: s.setSeen = s.setSeen || {}, save: save, onChange: syncGate };
 
@@ -213,7 +213,7 @@
         (EP.demo ? '<p class="lead">' + allRuns().length + ' scenario' + (allRuns().length === 1 ? '' : 's') + ' logged.</p>' : summary()) +
         '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">' + (EP.demo ? 'Download log (.json)' : 'Download notes (.json)') + '</button><button class="btn ghost" data-action="confirm-restart">Start over (deletes all ' + (EP.demo ? 'logs' : 'notes') + ')</button></div></div>';
     }
-    var single = s.screen === 'done' || s.screen === 'followup';
+    var single = EP.demo || s.screen === 'done' || s.screen === 'followup';
     var scn = ['reminder', 'kitchen', 'result', 'closure', 'after', 'runend'].indexOf(s.screen) >= 0 ? scnPanel() : '';
     el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' || (EP.demo && scn) ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
     afterRender(false);
@@ -482,6 +482,7 @@
     return m;
   }
   function scnPanel() {
+    if (EP.demo) return '';   // demo: the scenario list is not shown
     var m = doneMap(), all = EP.scenarios.LIST.filter(function (x) { return x.group === 'cleber'; }), n = Object.keys(m).length, tgt = EP.scenarios.byId(ST.target);
     var busy = isRunning();
     var open = ST.scnOpen === undefined ? window.innerWidth >= 1250 : ST.scnOpen;
@@ -517,12 +518,12 @@
     var tgt = EP.scenarios.byId(ST.target);
     var line = got.length ? 'This run matched: <b>' + EP.esc(got.join('; ')) + '</b>.' : 'This path is not one of the listed scenarios, but your answers are saved.';
     if (tgt && ST.matched.indexOf(tgt.id) < 0) line += ' You aimed for “' + EP.esc(tgt.title) + '”; it is not ticked yet.';
-    return '<div class="stage-wrap solo"><h1>Scenario ' + ST.runId + ' complete</h1>' +
-      '<p class="lead">' + line + '</p>' +
+    return '<div class="stage-wrap solo"><h1>' + (EP.demo ? 'Run ' : 'Scenario ') + ST.runId + ' complete</h1>' +
+      (EP.demo ? '' : '<p class="lead">' + line + '</p>') +
       '<p>Result: ' + (ST.escalated ? 'the meal was left unresolved' : (ST.plateGone ? 'the plate did not return; no alert was sent' : 'eating was confirmed')) + '. ' + (EP.demo ? 'The event log for this scenario is saved.' : 'Your answers and notes for this scenario are saved.') + '</p>' +
-      '<p>' + (left ? left + ' scenario' + (left === 1 ? '' : 's') + ' not done yet.' : 'All scenarios are done.') + '</p>' +
-      '<h2>Do you want to do another scenario or end?</h2>' +
-      '<div class="choices row"><button class="btn primary big" data-action="another">Do another scenario</button>' +
+      (EP.demo ? '' : '<p>' + (left ? left + ' scenario' + (left === 1 ? '' : 's') + ' not done yet.' : 'All scenarios are done.') + '</p>') +
+      '<h2>' + (EP.demo ? 'Another run, or end?' : 'Do you want to do another scenario or end?') + '</h2>' +
+      '<div class="choices row"><button class="btn primary big" data-action="another">' + (EP.demo ? 'Start another run' : 'Do another scenario') + '</button>' +
       '<button class="btn big" data-action="end-session">' + (EP.demo ? 'End' : 'End and answer the last questions') + '</button></div>' +
       '<p class="hint">You can also download or print your notes from the ☰ menu at any time.</p></div>';
   }

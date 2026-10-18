@@ -168,7 +168,7 @@
   }
 
   function panel() {
-    if (EP.demo) return '<aside class="panel">' + scnHtml() + '</aside>';   // demo: no questions
+    if (EP.demo) return '';   // demo: no scenario list, no questions
     return '<aside class="panel">' + scnHtml() + EP.personas.sarah() + '<div class="tabs2"><button class="' + (ptab === 'steps' ? 'on' : '') + '" data-action="s-ptab" data-ptab="steps">Step questions</button>' +
       '<button class="' + (ptab === 'quest' ? 'on' : '') + '" data-action="s-ptab" data-ptab="quest">Open questions</button></div>' +
       (ptab === 'quest' ? questionnaireHtml() : stepsHtml()) + '</aside>';
@@ -184,7 +184,7 @@
     var hasForm = snap.phase === 'alert' || snap.phase === 'resolved';
     el.innerHTML = header() +
       (EP.demo ? '' : '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
-      '<div class="layout sarah tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
+      '<div class="layout sarah' + (EP.demo ? ' single' : '') + ' tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
       '</div>' + panel() + '</div>' +
       '<p class="sim-note">Simulation: nothing is sent to a real phone.</p>';
   }
