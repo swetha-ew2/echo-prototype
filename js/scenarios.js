@@ -8,6 +8,7 @@
   function ate(e) { return !!e && (e.a === 'done' || e.a === 'silent'); }
   function firstNotNow(t) { for (var i = 0; i < t.length; i++) if (t[i].a === 'notnow') return i; return -1; }
   function last(t) { return t[t.length - 1]; }
+  function evs(r, type) { return (r.log || []).filter(function (e) { return e.type === type; }); }
 
   var LIST = [
     { id: 'C1', group: 'cleber', title: 'Eats at once and says “I’m done”',
@@ -49,6 +50,20 @@
     { id: 'C12', group: 'cleber', title: '“Not now”, then goes to the kitchen but does not eat',
       how: 'Reminder 1: Say “Not now”. After the restart, never eat. Reminders 1 and 2: do anything except eat (do nothing, leave the kitchen, or say “Not now” once more). Reminder 3: go to the kitchen and leave without eating.',
       test: function (r) { return r.escalated && firstNotNow(r.trail) >= 0 && r.outcome === 'kitchen'; } },
+
+    /* B2: facilitator events (EM-03). They exercise the plate and sensor rules and the visit summary. */
+    { id: 'C13', group: 'cleber', title: 'Plate leaves the table and returns (under an hour)',
+      how: 'Reminder 1: Go to the kitchen. In the Event log press “Plate leaves the table”, choose “Leave the kitchen without eating”, press Continue (Echo sends nothing), then in the Event log press “Plate returns” (15 min) and carry on to the end.',
+      test: function (r) { return evs(r, 'plate_returned').some(function (e) { return e.data.away <= 60; }); } },
+    { id: 'C14', group: 'cleber', title: 'Plate away for over an hour',
+      how: 'As the scenario above, but choose 90 or 120 min when the plate returns. The summary flags it for Sarah.',
+      test: function (r) { return evs(r, 'plate_returned').some(function (e) { return e.data.away > 60; }); } },
+    { id: 'C15', group: 'cleber', title: 'Plate never returns',
+      how: 'Reminder 1: Go to the kitchen. In the Event log press “Plate leaves the table”, then “Plate never returns”. Continue: Echo stops and sends no alert.',
+      test: function (r) { return evs(r, 'plate_not_returned').length > 0; } },
+    { id: 'C16', group: 'cleber', title: 'A kitchen sensor goes offline',
+      how: 'Reminder 1: Go to the kitchen. In the Event log press “Kitchen sensor reported offline”, then finish the run any way you like. The visit summary must show a data gap.',
+      test: function (r) { return evs(r, 'sensor_offline').length > 0; } },
 
     { id: 'S1', group: 'sarah', title: 'Sarah calls Cleber',
       how: 'After a run that ends unresolved, on Sarah’s phone press “Call Cleber”.' },

@@ -143,6 +143,7 @@
     /* options.set: the question set that applies on this screen (it is added to the step and stays for the step).
        options.after: label for the optional "what happened next" note. */
     formHtml: function (notes, id, options) {
+      if (EP.demo) return '';   // demo: no walkthrough form, and no empty note entries
       options = options || {};
       var e = EP.wt.ensure(notes, id), m = EP.wt.meta(id), esc = EP.esc;
       /* A step's questions are asked in full the first time that step appears in the session. Later times (another
@@ -242,7 +243,7 @@
 
     /* Plain data for download / printing. */
     exportData: function (meta, cleber, sarah, extra) {
-      return Object.assign({ exportedAt: new Date().toISOString(), prototype: 'Echo meal check-in prototype (AT-01, build B1 web version v1)', session: meta, cleberPath: cleber, sarahPath: sarah }, extra || {});
+      return Object.assign({ exportedAt: new Date().toISOString(), prototype: 'Echo meal check-in prototype (AT-01, build ' + EP.build + (EP.demo ? ' demo' : ' walkthrough') + ')', session: meta, cleberPath: cleber, sarahPath: sarah }, extra || {});
     },
 
     download: function (data, name) {
@@ -274,7 +275,7 @@
               (cs.fail ? '<ul>' + r.checks.filter(function (c) { return c.status === 'fail'; }).map(function (c) { return '<li>' + esc(c.rule) + ': ' + esc(c.detail) + '</li>'; }).join('') + '</ul>' : '');
           }
           head += extra;
-          if (!ids.length) return head + '<p class="hint">No notes recorded.</p>';
+          if (!ids.length) return head + (EP.demo ? '' : '<p class="hint">No notes recorded.</p>');
           return head + ids.map(function (id) {
             var e = r.notes[id], h = '<article class="pn"><h3>' + esc(e.step) + ': ' + esc(e.title) + '</h3><table>';
             EP.wt.questionsOf(e).forEach(function (q) {
@@ -292,14 +293,14 @@
         }).join('');
       }
       var fu = '';
-      if (data.cleberPath && data.cleberPath.followup) {
+      if (!EP.demo && data.cleberPath && data.cleberPath.followup) {
         fu = '<h2>Follow-up questions</h2><table>' + FOLLOWUP.map(function (q) {
           var f = data.cleberPath.followup[q[0]] || {};
           return '<tr><td class="k">' + esc(q[1]) + '</td><td class="v">' + esc(f.text || '–') + '</td></tr>';
         }).join('') + '</table>';
       }
       var qn = '';
-      var oq = data.sarahOpenQuestions;
+      var oq = EP.demo ? null : data.sarahOpenQuestions;
       if (oq) {
         function qa(items, vals) {
           return '<table>' + items.map(function (it) { return '<tr><td class="k">' + esc(it[1]) + '</td><td class="v">' + esc((vals || {})[it[0]] || '–') + '</td></tr>'; }).join('') + '</table>';
@@ -312,9 +313,10 @@
         });
         qn += '<h3 class="run-h">After the visit summary</h3>' + qa(EP.oq.B, oq.B) + '<h3 class="run-h">At the end</h3>' + qa(EP.oq.C, oq.C);
       }
-      return '<h1>Walkthrough notes: Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
+      var coverage = data.ruleCoverage ? '<h2>Rule coverage</h2>' + EP.log.coverageHtml(data.ruleCoverage) : '';
+      return '<h1>' + (EP.demo ? 'Event logs' : 'Walkthrough notes') + ': Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
         '<h2>Path A: Cleber</h2>' + cards(data.cleberPath) + fu +
-        '<h2>Path B: Sarah</h2>' + cards(data.sarahPath) + qn;
+        (EP.demo ? coverage : '<h2>Path B: Sarah</h2>' + cards(data.sarahPath)) + qn;
     }
   };
 })();

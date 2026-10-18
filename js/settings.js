@@ -6,6 +6,11 @@
   var defaults = { lang: 'en', size: 1, contrast: false, night: false, motion: reduce ? 'light' : 'lean', voice: true, captions: true };
   EP.settings = Object.assign({}, defaults, EP.store.get('echo.settings', {}));
 
+  /* Build B2. The default is the demo: no walkthrough questions, same scenarios, event log and visit summary.
+     Open the page with ?walkthrough=1 (before the #) to get the B1 walkthrough form back. */
+  EP.build = 'B2';
+  EP.demo = !/[?&]walkthrough=1(&|$)/.test(location.search);
+
   EP.applySettings = function () {
     var s = EP.settings, d = document.documentElement;
     EP.lang = EP.LANGS[s.lang] ? s.lang : 'en';

@@ -13,9 +13,10 @@
 
   function home() {
     var resume = EP.store.get('echo.cleber', null);
-    root.innerHTML = '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype</small></div></div>' +
+    root.innerHTML = '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Meal check-in prototype · ' + EP.build + (EP.demo ? ' demo' : '') + '</small></div></div>' +
       '<div class="top-actions"><button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button></div></header>' +
-      '<main class="brief"><h1>Echo meal check-in</h1><p class="lead">Walkthrough prototype for a meal check-in.</p>' +
+      '<main class="brief"><h1>Echo meal check-in</h1><p class="lead">' + (EP.demo ? 'Demo of the meal check-in.' : 'Walkthrough prototype for a meal check-in.') + '</p>' +
+      '' +
       '<div class="brief-grid">' +
       '<section class="card"><h2>Cleber’s screen (hosts)</h2>' +
       (resume ? '<p><button class="btn primary" data-action="home-resume">Resume session ' + EP.esc(resume.code) + '</button></p><p><button class="btn" data-action="home-new">New session</button></p>'

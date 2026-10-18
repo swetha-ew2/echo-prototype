@@ -56,7 +56,7 @@
   }
 
   function header() {
-    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Sarah’s phone</small></div></div>' +
+    return '<header class="topbar"><div class="brand"><span class="logo" aria-hidden="true"></span><div><b>Echo</b><small>Sarah’s phone · ' + EP.build + (EP.demo ? ' demo' : '') + '</small></div></div>' +
       '<div class="top-actions">' + (standalone ? '<span class="chip-btn wait"><i></i>No session</span>' : chip()) +
       '<button class="icon-btn" data-action="open-settings" aria-label="' + EP.esc(EP.t('ui_settings')) + '">⚙</button></div></header>';
   }
@@ -168,6 +168,7 @@
   }
 
   function panel() {
+    if (EP.demo) return '<aside class="panel">' + scnHtml() + '</aside>';   // demo: no questions
     return '<aside class="panel">' + scnHtml() + EP.personas.sarah() + '<div class="tabs2"><button class="' + (ptab === 'steps' ? 'on' : '') + '" data-action="s-ptab" data-ptab="steps">Step questions</button>' +
       '<button class="' + (ptab === 'quest' ? 'on' : '') + '" data-action="s-ptab" data-ptab="quest">Open questions</button></div>' +
       (ptab === 'quest' ? questionnaireHtml() : stepsHtml()) + '</aside>';
@@ -182,7 +183,7 @@
     } };
     var hasForm = snap.phase === 'alert' || snap.phase === 'resolved';
     el.innerHTML = header() +
-      ('<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
+      (EP.demo ? '' : '<div class="tabs-m"><button class="' + (tab === 'phone' ? 'on' : '') + '" data-action="s-tab" data-tab="phone">Phone</button><button class="' + (tab === 'form' ? 'on' : '') + '" data-action="s-tab" data-tab="form">Questions' + (hasForm ? ' •' : '') + '</button></div>') +
       '<div class="layout sarah tab-' + tab + '"><div class="stage-wrap phone-wrap">' + phone() +
       '</div>' + panel() + '</div>' +
       '<p class="sim-note">Simulation: nothing is sent to a real phone.</p>';

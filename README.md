@@ -1,8 +1,21 @@
-# Echo meal check-in prototype (AT-01, build B1, web v2)
+# Echo meal check-in prototype (AT-01, build B2; B1 = the walkthrough build, git tag `b1-walkthrough`)
 
 A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of use case **UC01: Support Cleber through a planned meal**. It is a static site (HTML, CSS and plain JavaScript): no build step, no server of its own.
 
 > **Simulation.** Nothing senses, decides or logs anything. The prototype plays Echo and Sarah's phone; evaluators imagine the persona.
+
+## Build B2 (branch `v2-demo`)
+
+B2 is the demo build. Open the page as it is for the **demo**: the same scenarios, Echo, Sarah's phone, event log and visit summary, but **no walkthrough questions** (no Yes/No form, no reasons, no follow-up screen, no gating of Continue; Sarah's phone shows no questions either). Add `?walkthrough=1` before the `#` (for example `index.html?walkthrough=1#/cleber`) to get the B1 walkthrough form back.
+
+What changed from B1:
+
+- **Announced postponement.** After the first "not now" Echo says it will remind Cleber in 30 minutes (four wordings, English and German, new audio). The log gets an *Announcement* entry. A second "not now" is still acknowledged without a new time.
+- **Chime and light (log only).** Nothing is played or shown; each reminder is preceded by a *Chime and light* log entry. Rule R14 checks it.
+- **Rule R6 dropped** ("the camera stays off until kitchen activity" is a technology constraint in TECH-02, not a Premise criterion). The other rules keep their B1 numbers, so the set is R1–R5 and R7–R14 (13 rules). R1 skips the chime and announcement entries; R3 also requires the 30-minute announcement.
+- **Coverage readout.** The Event log, the printed notes and the `.json` export show, for each rule, how many scenarios passed, failed or were n/a, and mark any rule that no scenario has exercised as *not covered*.
+- **Four facilitator scenarios** in Cleber's panel (C13 plate leaves and returns, C14 plate away over an hour, C15 plate never returns, C16 sensor goes offline), so the plate and sensor rules and the visit summary data gaps get exercised. The panel now lists 16 scenarios for Cleber's screen.
+- Not done on purpose: the kitchen cue for why Cleber is in the kitchen, praise or check-in dialogue, and sleep detection (a limitation, see AT-01).
 
 ## What is in it
 
@@ -32,7 +45,7 @@ Cleber's path has **108 distinct paths** (three reminders; at each one Cleber ca
 
 - **No host-notes form.** The hosts cannot write during the session, so the success stories, failure stories, design suggestions and problems outside the sequence are asked as open questions at the end: Cleber's last screen (questions 5 to 8) and the end of Sarah's open questions (C1 and C2). The per-step "why" boxes carry the step-level stories.
 - **Event log** (header button): every scenario writes a timestamped log (trigger, each reminder, response, postponement, kitchen entry, camera on/off, eating state, escalation and its recipient, Sarah's response, the "resolved" update, closure). In the same window the facilitator can add **meal-state events** as in EM-03: *plate leaves the table* (then returns after N minutes, or never returns) and *kitchen sensor reported offline*. While the plate is away Echo sends no reminder (the next one is withheld until the plate returns); a plate that never returns is logged as not returned and sends no alert.
-- **Conformance check (M-04):** 13 rules checked on the log (reminder order and count, one postponement, no prompt after closure, camera off until kitchen activity, escalation recipient and stated reason, repeat once then Gilbert, no reminder while the plate is away, plate-away time and the over-one-hour flag, missing data shown, closure). A scenario passes only if no rule fails. This verifies the prototype's scripted logic only (EM-03 limitation).
+- **Conformance check (M-04):** 13 rules checked on the log (reminder order and count, one announced postponement, no prompt after closure, escalation recipient and stated reason, repeat once then Gilbert, no reminder while the plate is away, plate-away time and the over-one-hour flag, missing data shown, closure, chime before each reminder; B1 also had R6, camera off until kitchen activity). A scenario passes only if no rule fails. This verifies the prototype's scripted logic only (EM-03 limitation).
 - **Visit summary** (Sarah's phone, "Open visit summary"): built from the finished scenarios' logs. Items needing attention come first; plate-away over one hour and sensor gaps are called out; missing data is shown as a gap. When Sarah's view runs alone it shows a small sample.
 - **Open questions, no scores** (this is a formative cycle, so there are no Likert items): Cleber answers the follow-up questions on the last screen: three on autonomy (the open question of M-03), one on task progress, and four findings questions (what worked, what could go wrong, what to change, what was not covered). Sarah has an *Open questions* tab: after the alert (what it told her, what she would do and why, what was unclear) and after the visit summary (which meals were eaten, whether timing, plate-away times and missing data were understandable). The real reason for the alert is stored beside her answer so the hosts can compare. M-03's and M-05's Likert items are not used.
 

@@ -8,7 +8,8 @@
     trigger: 'Trigger', reminder: 'Reminder', response: 'Response', postponement: 'Postponement', kitchen_entry: 'Kitchen entry',
     camera: 'Camera', eating: 'Eating state', reminder_withheld: 'Reminder withheld', escalation: 'Escalation', escalation_repeat: 'Escalation repeated',
     escalation_backup: 'Backup notified', sarah_response: 'Sarah responded', resolved: 'Resolved update', plate_left: 'Plate left', plate_returned: 'Plate returned',
-    plate_not_returned: 'Plate not returned', sensor_offline: 'Sensor offline', closure: 'Closure'
+    plate_not_returned: 'Plate not returned', sensor_offline: 'Sensor offline', closure: 'Closure',
+    chime: 'Chime and light', announce: 'Announcement'
   };
 
   function of(log, type) { return (log || []).filter(function (e) { return e.type === type; }); }
@@ -22,7 +23,8 @@
     var rem = of(log, 'reminder');
 
     // 1 trigger, then reminder 1 on the speakers
-    var ok1 = log.length > 1 && log[0].type === 'trigger' && log[1].type === 'reminder' && log[1].data.n === 1 && log[1].data.channel === 'speaker';
+    var flow = log.filter(function (e) { return e.type !== 'chime' && e.type !== 'announce'; });   // the chime and the announcement have their own rules (R14, R3)
+    var ok1 = flow.length > 1 && flow[0].type === 'trigger' && flow[1].type === 'reminder' && flow[1].data.n === 1 && flow[1].data.channel === 'speaker';
     out.push(rule('R1', 'The trigger is logged, then reminder 1 is issued on the speakers', log.length ? (ok1 ? 'pass' : 'fail') : 'na', ok1 ? '' : 'The log should start with the trigger and then reminder 1.'));
 
     // 2 at most three reminders per sequence, numbered in order
@@ -35,10 +37,11 @@
     });
     out.push(rule('R2', 'At most three reminders per sequence, in order', rem.length ? (bad ? 'fail' : 'pass') : 'na', bad || (rem.length + ' reminder' + (rem.length === 1 ? '' : 's') + ' in total.')));
 
-    // 3 one postponement restarts, a second does not
-    var pp = of(log, 'postponement'), resets = pp.filter(function (e) { return e.data.reset; }).length;
-    var bad3 = resets > 1 ? 'The sequence was restarted more than once.' : (pp.length && !pp[0].data.reset ? 'The first postponement did not restart the sequence.' : '');
-    out.push(rule('R3', 'One postponement restarts the sequence; a second does not', pp.length ? (bad3 ? 'fail' : 'pass') : 'na', bad3 || (pp.length + ' postponement' + (pp.length === 1 ? '' : 's') + ' logged.')));
+    // 3 one postponement restarts (and is announced), a second does not
+    var pp = of(log, 'postponement'), resets = pp.filter(function (e) { return e.data.reset; }).length, ann = of(log, 'announce');
+    var bad3 = resets > 1 ? 'The sequence was restarted more than once.' : (pp.length && !pp[0].data.reset ? 'The first postponement did not restart the sequence.' :
+      (resets === 1 && ann.length !== 1 ? 'The postponement was not announced to Cleber exactly once.' : (resets === 1 && ann[0].data.minutes !== 30 ? 'The announcement does not state 30 minutes.' : '')));
+    out.push(rule('R3', 'One postponement restarts the sequence and Echo announces it (30 minutes); a second does not restart it', pp.length ? (bad3 ? 'fail' : 'pass') : 'na', bad3 || (pp.length + ' postponement' + (pp.length === 1 ? '' : 's') + ' logged.')));
 
     // 4 no reminder after eating is confirmed or after escalation
     var stop = -1;
@@ -50,10 +53,8 @@
     var eatBad = of(log, 'eating').some(function (e) { return e.data.state === 'confirmed' && !e.data.source; });
     out.push(rule('R5', 'Kitchen activity alone is never logged as eating (confirmed only by Cleber saying he is done, or by the camera)', log.length ? (eatBad ? 'fail' : 'pass') : 'na', eatBad ? 'An eating confirmation has no source.' : ''));
 
-    // 6 camera off until kitchen activity
-    var cam = of(log, 'camera').filter(function (e) { return e.data.on; });
-    var firstKitchen = idx(log, 'kitchen_entry'), badCam = cam.some(function (e) { return firstKitchen < 0 || log.indexOf(e) < firstKitchen; });
-    out.push(rule('R6', 'The camera stays off until kitchen activity', log.length ? (badCam ? 'fail' : 'pass') : 'na', cam.length ? '' : 'No kitchen activity, so the camera stayed off.'));
+    // (R6, "the camera stays off until kitchen activity", was dropped in B2: it is a technology constraint (TECH-02), not a Premise criterion.
+    //  The other rule ids keep their B1 numbers so results can be compared across builds.)
 
     // 7 escalation after the final reminder, to Sarah, with the reason stated
     var esc = of(log, 'escalation');
@@ -106,7 +107,34 @@
     // 13 closure
     var cl = of(log, 'closure').length > 0;
     out.push(rule('R13', 'The interaction is closed and Echo returns to rest', (!log.length || (run && run.finished === false)) ? 'na' : (cl ? 'pass' : 'fail'), cl ? '' : 'No closure entry.'));
+
+    // 14 (B2) every spoken reminder is preceded by the chime and light
+    var noChime = 0;
+    log.forEach(function (e, k) { if (e.type === 'reminder' && !(k > 0 && log[k - 1].type === 'chime')) noChime++; });
+    out.push(rule('R14', 'Every reminder is preceded by a chime and light at the speaker', rem.length ? (noChime ? 'fail' : 'pass') : 'na', noChime ? noChime + ' reminder(s) without a chime.' : ''));
     return out;
+  }
+
+  /* How often each rule was exercised across a set of runs. A rule that was n/a in every run is "not covered":
+     passing nothing proves nothing. */
+  function coverage(runs) {
+    var byId = {}, order = [];
+    (runs || []).forEach(function (r) {
+      check(r).forEach(function (c) {
+        if (!byId[c.id]) { byId[c.id] = { id: c.id, rule: c.rule, pass: 0, fail: 0, na: 0 }; order.push(c.id); }
+        byId[c.id][c.status]++;
+      });
+    });
+    return order.map(function (id) { var x = byId[id]; x.covered = x.pass + x.fail > 0; return x; });
+  }
+  function coverageHtml(cov) {
+    var esc = EP.esc;
+    if (!cov.length) return '<p class="hint">No scenarios yet.</p>';
+    var missing = cov.filter(function (c) { return !c.covered; }).length;
+    return '<p class="hint">' + (missing ? missing + ' of ' + cov.length + ' rules have not been exercised in any scenario yet.' : 'Every rule has been exercised at least once.') + '</p>' +
+      '<table class="logtable"><thead><tr><th>Rule</th><th>Pass</th><th>Fail</th><th>n/a</th><th></th></tr></thead><tbody>' + cov.map(function (c) {
+        return '<tr><td>' + esc(c.id) + ' ' + esc(c.rule) + '</td><td>' + c.pass + '</td><td>' + c.fail + '</td><td>' + c.na + '</td><td>' + (c.covered ? '' : '<b>not covered</b>') + '</td></tr>';
+      }).join('') + '</tbody></table>';
   }
 
   function summaryOfChecks(checks) {
@@ -210,6 +238,6 @@
     return '<ol class="fu-list"><li><label for="' + id + '">Was anything different this time?</label><textarea id="' + id + '" rows="3" placeholder="Optional. Leave it empty if nothing was different." data-oq="' + group + '" data-item="diff"' + (run ? ' data-run="' + esc(run) + '"' : '') + '>' + esc((vals || {}).diff || '') + '</textarea></li></ol>';
   }
 
-  EP.log = { LABEL: LABEL, check: check, checkSummary: summaryOfChecks, episode: episode, summaryHtml: summaryHtml, sample: sample };
+  EP.log = { LABEL: LABEL, check: check, checkSummary: summaryOfChecks, coverage: coverage, coverageHtml: coverageHtml, episode: episode, summaryHtml: summaryHtml, sample: sample };
   EP.oq = { A: OQ_A, B: OQ_B, C: OQ_C, html: openHtml, diffHtml: diffHtml };
 })();
