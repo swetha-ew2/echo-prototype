@@ -160,7 +160,7 @@
   /* The questions panel for a step. On the steps where Cleber acts, the questions are open at once: the evaluator can
      listen to Echo, answer, and then choose what Cleber does, in either order. */
   function stepPanel(html, actMsg) {
-    if (EP.demo) return panel(EP.personas.cleber() + '<p class="unlock-msg" id="unlock-msg">The questions are optional. Answer what you like, then press Continue.</p>' + html);   // demo: questions stay, nothing is required
+    if (EP.demo) return panel(EP.personas.cleber() + html);   // demo: questions stay, nothing is required
     var state = EP.wt.answered(ST.notes[cardId()]) ? 3 : 2;
     var stepper = '<ol class="stepper" id="wt-stepper" data-state="' + state + '"><li><i>1</i>Echo speaks</li><li><i>2</i>Answer the questions</li><li><i>3</i>Continue</li></ol>';
     return panel(EP.personas.cleber() + stepper + '<p class="unlock-msg" id="unlock-msg">' + (actMsg ? EP.esc(actMsg) : unlockText(state === 3)) + '</p>' + html);
