@@ -143,7 +143,6 @@
     /* options.set: the question set that applies on this screen (it is added to the step and stays for the step).
        options.after: label for the optional "what happened next" note. */
     formHtml: function (notes, id, options) {
-      if (EP.demo) return '';   // demo: no walkthrough form, and no empty note entries
       options = options || {};
       var e = EP.wt.ensure(notes, id), m = EP.wt.meta(id), esc = EP.esc;
       /* A step's questions are asked in full the first time that step appears in the session. Later times (another
@@ -164,7 +163,7 @@
         '<div class="wt-head"><span class="chip alt">Persona: ' + esc(m.persona) + '</span></div>' +
         '<h2>' + esc(m.title) + '</h2>' +
         '<p class="effect"><b>Intended effect:</b> ' + esc(m.effect) + '</p>' +
-        (anyFull ? '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>' : '<p class="hint">Answer as ' + esc(m.persona) + '. You answered this step’s questions earlier in the session, so only note what was different.</p>');
+        (anyFull ? (EP.demo ? '<p class="hint">Answer as ' + esc(m.persona) + '. These Yes/No questions are <b>optional</b>; add a short reason if you like.</p>' : '<p class="hint">Answer as ' + esc(m.persona) + '. Every Yes/No question here is <b>required</b> <span class="req" aria-hidden="true">*</span>; add a short reason after each tap.</p>') : '<p class="hint">Answer as ' + esc(m.persona) + '. You answered this step’s questions earlier in the session, so only note what was different.</p>');
       var groups = shown.length ? shown.map(function (sid) { return { sid: sid, lite: !!e.lite[sid], title: SETS[sid] && SETS[sid].title, qs: SETS[sid] ? SETS[sid].qs : [] }; }) : [{ title: '', qs: LEGACY }];
       groups.forEach(function (g) {
         if (multi && g.title) h += '<h3 class="qset">' + esc(g.title) + '</h3>';
@@ -176,10 +175,10 @@
         h += '<ol class="qs">';
         g.qs.forEach(function (q) {
           var k = q[0], a = e.q[k] || {};
-          h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q">' + esc(q[1]) + ' <span class="req" aria-hidden="true">*</span></p>' +
-            '<div class="yn" role="radiogroup" aria-required="true" aria-label="' + esc(q[1]) + ' (required)">' +
-            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
-            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans" required' + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
+          h += '<li class="' + (a.ans ? 'answered' : '') + '"><div class="qrow"><p class="q">' + esc(q[1]) + (EP.demo ? '' : ' <span class="req" aria-hidden="true">*</span>') + '</p>' +
+            '<div class="yn" role="radiogroup"' + (EP.demo ? '' : ' aria-required="true"') + ' aria-label="' + esc(q[1]) + (EP.demo ? '' : ' (required)') + '">' +
+            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="yes" data-card="' + id + '" data-path="q.' + k + '.ans"' + (EP.demo ? '' : ' required') + (a.ans === 'yes' ? ' checked' : '') + '><span>Yes</span></label>' +
+            '<label class="yn-opt"><input type="radio" name="' + id + '-' + k + '" value="no" data-card="' + id + '" data-path="q.' + k + '.ans"' + (EP.demo ? '' : ' required') + (a.ans === 'no' ? ' checked' : '') + '><span>No</span></label></div></div>' +
             '<textarea rows="2" placeholder="' + (a.ans === 'no' ? 'What would go wrong?' : 'Why? A short reason is enough.') + '" aria-label="Justification: ' + esc(q[1]) + '" data-card="' + id + '" data-path="q.' + k + '.why">' + esc(a.why || '') + '</textarea></li>';
         });
         h += '</ol>';
@@ -275,7 +274,7 @@
               (cs.fail ? '<ul>' + r.checks.filter(function (c) { return c.status === 'fail'; }).map(function (c) { return '<li>' + esc(c.rule) + ': ' + esc(c.detail) + '</li>'; }).join('') + '</ul>' : '');
           }
           head += extra;
-          if (!ids.length) return head + (EP.demo ? '' : '<p class="hint">No notes recorded.</p>');
+          if (!ids.length) return head + '<p class="hint">No notes recorded.</p>';
           return head + ids.map(function (id) {
             var e = r.notes[id], h = '<article class="pn"><h3>' + esc(e.step) + ': ' + esc(e.title) + '</h3><table>';
             EP.wt.questionsOf(e).forEach(function (q) {
@@ -293,14 +292,14 @@
         }).join('');
       }
       var fu = '';
-      if (!EP.demo && data.cleberPath && data.cleberPath.followup) {
+      if (data.cleberPath && data.cleberPath.followup) {
         fu = '<h2>Follow-up questions</h2><table>' + FOLLOWUP.map(function (q) {
           var f = data.cleberPath.followup[q[0]] || {};
           return '<tr><td class="k">' + esc(q[1]) + '</td><td class="v">' + esc(f.text || '–') + '</td></tr>';
         }).join('') + '</table>';
       }
       var qn = '';
-      var oq = EP.demo ? null : data.sarahOpenQuestions;
+      var oq = data.sarahOpenQuestions;
       if (oq) {
         function qa(items, vals) {
           return '<table>' + items.map(function (it) { return '<tr><td class="k">' + esc(it[1]) + '</td><td class="v">' + esc((vals || {})[it[0]] || '–') + '</td></tr>'; }).join('') + '</table>';
@@ -314,9 +313,9 @@
         qn += '<h3 class="run-h">After the visit summary</h3>' + qa(EP.oq.B, oq.B) + '<h3 class="run-h">At the end</h3>' + qa(EP.oq.C, oq.C);
       }
       var coverage = data.ruleCoverage ? '<h2>Rule coverage</h2>' + EP.log.coverageHtml(data.ruleCoverage) : '';
-      return '<h1>' + (EP.demo ? 'Event logs' : 'Walkthrough notes') + ': Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
+      return '<h1>Walkthrough notes: Echo prototype</h1><p class="hint">Session ' + esc(data.session && data.session.code) + ' · exported ' + esc(data.exportedAt) + '</p>' +
         '<h2>Path A: Cleber</h2>' + cards(data.cleberPath) + fu +
-        (EP.demo ? coverage : '<h2>Path B: Sarah</h2>' + cards(data.sarahPath)) + qn;
+        '<h2>Path B: Sarah</h2>' + cards(data.sarahPath) + qn + coverage;
     }
   };
 })();

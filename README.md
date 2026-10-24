@@ -6,7 +6,7 @@ A clickable prototype for the formative cognitive walkthrough (EM-04, ER-01) of 
 
 ## Build B2 (branch `v2-demo`)
 
-B2 is the demo build. Open the page as it is for the **demo**: the same scenarios, Echo, Sarah's phone, event log and visit summary, but **no walkthrough questions** (no Yes/No form, no reasons, no follow-up screen, no gating of Continue; Sarah's phone shows no questions either). Add `?walkthrough=1` before the `#` (for example `index.html?walkthrough=1#/cleber`) to get the B1 walkthrough form back.
+B2 is the demo build. Open the page as it is for the **demo**: Echo, Sarah's phone, event log and visit summary, with the walkthrough questions still shown beside each step but **optional** (nothing has to be answered; Continue is never blocked; the follow-up questions at the end can be left empty). The **scenario panel is hidden** on both screens. Add `?walkthrough=1` before the `#` (for example `index.html?walkthrough=1#/cleber`) to get the B1 behaviour back: required questions and the scenario list.
 
 What changed from B1:
 

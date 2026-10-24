@@ -116,7 +116,7 @@
       (again && !EP.demo ? '<div class="card next-run"><b>Next scenario.</b> Your notes for ' + ST.runs.length + ' earlier scenario' + (ST.runs.length === 1 ? ' is' : 's are') + ' saved. Pick the next one in the panel (or walk any path you like) and start.</div>' : '') +
       '<h1>Support Cleber through a planned meal</h1>' +
       '<p class="lead"><b>Goal:</b> as Cleber, respond to Echo’s lunch reminders the way you want.<br><b>Scenario:</b> it is 12:30. Sarah left a meal for Cleber; he has not been near the kitchen.</p>' +
-      (EP.demo ? '<p>Demo: choose what Cleber does at each reminder. Open the Event log (top right) to see what Echo records.</p>'
+      (EP.demo ? '<p>Demo: choose what Cleber does at each reminder. The questions beside each step are optional, and the Event log (top right) shows what Echo records.</p>'
         : '<p>Evaluators: step through as your persona and answer the Yes/No questions shown at each step; they are required before you can continue.</p>') +
       EP.personas.cleber(true) +
       '<details class="card"><summary><b>Action sequence</b> (for the hosts)</summary>' +
@@ -160,7 +160,7 @@
   /* The questions panel for a step. On the steps where Cleber acts, the questions are open at once: the evaluator can
      listen to Echo, answer, and then choose what Cleber does, in either order. */
   function stepPanel(html, actMsg) {
-    if (EP.demo) return '';   // demo: no walkthrough questions
+    if (EP.demo) return panel(EP.personas.cleber() + '<p class="unlock-msg" id="unlock-msg">The questions are optional. Answer what you like, then press Continue.</p>' + html);   // demo: questions stay, nothing is required
     var state = EP.wt.answered(ST.notes[cardId()]) ? 3 : 2;
     var stepper = '<ol class="stepper" id="wt-stepper" data-state="' + state + '"><li><i>1</i>Echo speaks</li><li><i>2</i>Answer the questions</li><li><i>3</i>Continue</li></ol>';
     return panel(EP.personas.cleber() + stepper + '<p class="unlock-msg" id="unlock-msg">' + (actMsg ? EP.esc(actMsg) : unlockText(state === 3)) + '</p>' + html);
@@ -209,13 +209,13 @@
         EP.wt.followupHtml(s.followup) +
         '<div class="choices"><button class="btn primary big" data-action="finish">Finish</button><p class="hint">Your answers are saved as you type.</p></div></div>';
     } else if (s.screen === 'done') {
-      body = '<div class="stage-wrap solo"><h1>' + (EP.demo ? 'Demo finished.' : 'Done. Hand your notes to the hosts.') + '</h1>' +
-        (EP.demo ? '<p class="lead">' + allRuns().length + ' scenario' + (allRuns().length === 1 ? '' : 's') + ' logged.</p>' : summary()) +
-        '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">' + (EP.demo ? 'Download log (.json)' : 'Download notes (.json)') + '</button><button class="btn ghost" data-action="confirm-restart">Start over (deletes all ' + (EP.demo ? 'logs' : 'notes') + ')</button></div></div>';
+      body = '<div class="stage-wrap solo"><h1>Done. Hand your notes to the hosts.</h1>' +
+        summary() +
+        '<div class="choices row"><button class="btn primary" data-action="print">Print / save as PDF</button><button class="btn" data-action="download">Download notes (.json)</button><button class="btn ghost" data-action="confirm-restart">Start over (deletes all notes)</button></div></div>';
     }
-    var single = EP.demo || s.screen === 'done' || s.screen === 'followup';
+    var single = s.screen === 'done' || s.screen === 'followup' || (EP.demo && s.screen === 'runend');
     var scn = ['reminder', 'kitchen', 'result', 'closure', 'after', 'runend'].indexOf(s.screen) >= 0 ? scnPanel() : '';
-    el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' || (EP.demo && scn) ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
+    el.innerHTML = header() + '<div class="layout' + (single ? ' single' : '') + (scn ? ' with-scn' : '') + (s.screen === 'runend' && !EP.demo ? ' two' : '') + '">' + scn + body + '</div>' + simNotice();
     afterRender(false);
     syncGate();
     var pn = document.getElementById('panel');
@@ -225,8 +225,9 @@
   /* Yes/No answers are required: the buttons that leave a step stay disabled until the step's questions are answered. */
   function syncGate() {
     var s = ST;
+    if (EP.demo) return;   // demo: nothing is required, the buttons stay enabled
     if (['result', 'closure', 'after'].indexOf(s.screen) < 0) return;
-    var ok = EP.demo || EP.wt.answered(s.notes[cardId()]);
+    var ok = EP.wt.answered(s.notes[cardId()]);
     var btns = el.querySelectorAll('[data-gate]');
     for (var i = 0; i < btns.length; i++) btns[i].disabled = !ok;
     var msg = document.getElementById('gate-msg');
@@ -299,7 +300,7 @@
 
   function trail(a) { ST.trail.push({ n: ST.n, a: a }); }
 
-  function visit(id) { if (!EP.demo) EP.wt.ensure(ST.notes, id); if (ST.visited.indexOf(id) < 0) ST.visited.push(id); }
+  function visit(id) { EP.wt.ensure(ST.notes, id); if (ST.visited.indexOf(id) < 0) ST.visited.push(id); }
   function giveReminder(speak) {
     ST.times.push(ST.clock); ST.line = pick('r' + ST.n);
     logEv('chime', 'Soft chime and light at the speaker, before the voice.', { n: ST.n });   // B2: logged only, nothing is played
@@ -366,7 +367,7 @@
       ST.runId++; ST.target = nextTarget(); ST.screen = 'brief';
       save(); pushState(); view(); window.scrollTo(0, 0);
     },
-    'end-session': function () { EP.scene.clear(); archiveRun(); go(EP.demo ? 'done' : 'followup'); },
+    'end-session': function () { EP.scene.clear(); archiveRun(); go('followup'); },
     replay: function () {
       var s = ST;
       if (s.screen === 'reminder') EP.scene.say(s.line || 'r' + s.n);
@@ -520,11 +521,11 @@
     if (tgt && ST.matched.indexOf(tgt.id) < 0) line += ' You aimed for “' + EP.esc(tgt.title) + '”; it is not ticked yet.';
     return '<div class="stage-wrap solo"><h1>' + (EP.demo ? 'Run ' : 'Scenario ') + ST.runId + ' complete</h1>' +
       (EP.demo ? '' : '<p class="lead">' + line + '</p>') +
-      '<p>Result: ' + (ST.escalated ? 'the meal was left unresolved' : (ST.plateGone ? 'the plate did not return; no alert was sent' : 'eating was confirmed')) + '. ' + (EP.demo ? 'The event log for this scenario is saved.' : 'Your answers and notes for this scenario are saved.') + '</p>' +
+      '<p>Result: ' + (ST.escalated ? 'the meal was left unresolved' : (ST.plateGone ? 'the plate did not return; no alert was sent' : 'eating was confirmed')) + '. ' + 'Your answers (if any) and the event log for this scenario are saved.' + '</p>' +
       (EP.demo ? '' : '<p>' + (left ? left + ' scenario' + (left === 1 ? '' : 's') + ' not done yet.' : 'All scenarios are done.') + '</p>') +
       '<h2>' + (EP.demo ? 'Another run, or end?' : 'Do you want to do another scenario or end?') + '</h2>' +
       '<div class="choices row"><button class="btn primary big" data-action="another">' + (EP.demo ? 'Start another run' : 'Do another scenario') + '</button>' +
-      '<button class="btn big" data-action="end-session">' + (EP.demo ? 'End' : 'End and answer the last questions') + '</button></div>' +
+      '<button class="btn big" data-action="end-session">' + 'End and answer the last questions' + '</button></div>' +
       '<p class="hint">You can also download or print your notes from the ☰ menu at any time.</p></div>';
   }
 
